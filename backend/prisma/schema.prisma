@@ -50,6 +50,8 @@ model User {
   subscription     Subscription?
   sessions         UserSession[]
   butcherReviews   ButcherReview[]
+  butcherApplications              ButcherApplication[]
+  butcherApplicationTimelineEvents ButcherApplicationTimelineEvent[]
 
   @@index([username])
   @@index([email])
@@ -431,9 +433,12 @@ model Butcher {
   closeTime           String           @default("22:00")
   closedDays          String[]
   isOpen              Boolean          @default(true)
+  sourceApplicationId String?          @unique
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
-  user                User             @relation(fields: [userId], references: [id])
+  user                      User                 @relation(fields: [userId], references: [id])
+  sourceApplication         ButcherApplication?  @relation("ButcherSourceApplication", fields: [sourceApplicationId], references: [id])
+  provisionedApplications   ButcherApplication[] @relation("ApplicationProvisionedButcher")
   offers              ButcherOffer[]
   orders              ButcherOrder[]
   products            ButcherProduct[]
@@ -550,6 +555,94 @@ model ButcherReview {
   @@index([reviewerId])
 }
 
+model ButcherApplication {
+  id                String                   @id @default(uuid())
+  userId            String
+  applicationNumber Int
+  status            ButcherApplicationStatus @default(DRAFT)
+
+  nameAr          String?
+  nameEn          String?
+  phone           String?
+  ownerName       String?
+  commercialReg   String?
+  country         Country?
+  city            String?
+  cityAr          String?
+  address         String?
+  addressAr       String?
+  lat             Float?
+  lng             Float?
+  type            ButcherType              @default(regular)
+  bioAr           String?
+  bioEn           String?
+  specialties     String[]                 @default([])
+  openTime        String                   @default("06:00")
+  closeTime       String                   @default("22:00")
+
+  rejectionReason String?
+  butcherId       String?
+  acceptedTermsAt DateTime?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  withdrawnAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user           User                              @relation(fields: [userId], references: [id])
+  butcher        Butcher?                          @relation("ApplicationProvisionedButcher", fields: [butcherId], references: [id])
+  sourcedButcher Butcher?                          @relation("ButcherSourceApplication")
+  documents      ButcherApplicationDocument[]
+  timelineEvents ButcherApplicationTimelineEvent[]
+
+  @@unique([userId, applicationNumber])
+  @@index([userId, status])
+  @@index([status, submittedAt])
+  @@index([status, createdAt])
+  @@index([country, status])
+  @@index([butcherId])
+  @@index([userId, createdAt])
+}
+
+model ButcherApplicationDocument {
+  id               String                           @id @default(uuid())
+  applicationId    String
+  type             ButcherApplicationDocumentType
+  fileKey          String?
+  status           ButcherApplicationDocumentStatus @default(pending)
+  notes            String?
+  originalFileName String?
+  mimeType         String?
+  fileSizeBytes    Int?
+  createdAt        DateTime                         @default(now())
+  updatedAt        DateTime                         @updatedAt
+
+  application ButcherApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@index([applicationId, type])
+  @@index([status])
+}
+
+model ButcherApplicationTimelineEvent {
+  id            String                           @id @default(uuid())
+  applicationId String
+  action        ButcherApplicationTimelineAction
+  comment       String?
+  createdBy     String
+  metadata      Json?
+  createdAt     DateTime                         @default(now())
+
+  application ButcherApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  actor       User               @relation(fields: [createdBy], references: [id])
+
+  @@index([applicationId, createdAt])
+  @@index([createdBy])
+  @@index([action])
+}
+
 enum Country {
   SA
   AE
@@ -664,4 +757,40 @@ enum StoryType {
   offer
   new_stock
   update
+}
+
+enum ButcherApplicationStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ButcherApplicationDocumentType {
+  commercial_license
+  national_id
+  municipal_permit
+  shop_photo
+  other
+}
+
+enum ButcherApplicationDocumentStatus {
+  pending
+  uploaded
+  accepted
+  rejected
+}
+
+enum ButcherApplicationTimelineAction {
+  application_created
+  draft_saved
+  document_added
+  document_updated
+  submitted
+  withdrawn
+  approved
+  rejected
+  admin_note
+  butcher_provisioned
 }
