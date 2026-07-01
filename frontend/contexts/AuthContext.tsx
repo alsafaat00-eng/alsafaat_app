@@ -7,8 +7,6 @@ import { registerAuthFetch } from '@/services/authFetch';
 import { fetchWithTimeout } from '@/services/fetchWithTimeout';
 import { API_BASE } from '@/services/api';
 
-console.log('[AuthContext] API_BASE is resolved to:', API_BASE);
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface AuthUser {
   id: string;
@@ -29,6 +27,7 @@ interface AuthContextValue {
   accessToken: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  // TODO(Migration): replace activeMode with capability-based navigation after Butcher Application workflow.
   activeMode: 'USER' | 'BUTCHER';
   switchMode: (mode: 'USER' | 'BUTCHER') => void;
   // OTP flow
@@ -54,7 +53,6 @@ export interface RegisterData {
   username:     string;
   country:      string;
   password?:    string;
-  role?:        'USER' | 'BUTCHER';
   // إذا عبر Google
   googleId?:    string;
   email?:       string;

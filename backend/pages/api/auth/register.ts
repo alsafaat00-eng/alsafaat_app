@@ -1,5 +1,6 @@
 // pages/api/auth/register.ts
 // التسجيل عبر رقم الجوال (OTP محقق) أو Google مع التحقق الإلزامي من رقم الجوال
+// Sprint 1: registration always creates USER; any client-supplied role is ignored.
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
@@ -31,20 +32,23 @@ const schema = z.object({
 
 export const config = { api: { bodyParser: { sizeLimit: '16kb' } } };
 
+/** Registration never accepts role from the client — always USER at create time. */
+function bodyWithoutRole(body: unknown): unknown {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return body;
+  const { role: _ignored, ...rest } = body as Record<string, unknown>;
+  return rest;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
   if (!(await apiRateLimit(req, res, 'auth'))) return;
 
-  const parsed = schema.safeParse(req.body);
+  const parsed = schema.safeParse(bodyWithoutRole(req.body));
   if (!parsed.success) {
     return apiError(res, 400, 'validation_error', 'بيانات غير صحيحة', parsed.error.flatten());
   }
 
   const { phone, phone_token, displayName, arabicName, username, country, password, googleId, email, avatar } = parsed.data;
-
-  if (req.body?.role === 'BUTCHER') {
-    return apiError(res, 400, 'invalid_role', 'تسجيل الملاحم يتم من صفحة تسجيل الملاحم فقط');
-  }
 
   // 1. التحقق من الـ phone_token
   try {

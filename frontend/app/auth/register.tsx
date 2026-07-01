@@ -167,7 +167,6 @@ export default function RegisterScreen() {
         displayName:  displayName.trim(),
         username:     username.trim().toLowerCase(),
         country:      currentCountry.dbCode,
-        role:         'USER',
         // Google details if applicable
         googleId:    googleId || undefined,
         email:       emailInput.trim().toLowerCase() || undefined,
@@ -527,11 +526,9 @@ export default function RegisterScreen() {
                 </Text>
               </Pressable>
 
-              <Pressable onPress={() => router.push('/butchers/register')}>
-                <Text style={styles.footerLinkText}>
-                  تريد تسجيل ملحمة؟ <Text style={styles.footerLinkActive}>سجّل ملحمتك هنا</Text>
-                </Text>
-              </Pressable>
+              <Text style={[styles.footerLinkText, { marginTop: spacing.sm, textAlign: 'center' }]}>
+                لإدارة ملحمة، أنشئ حساباً أولاً ثم سجّل الدخول من داخل التطبيق.
+              </Text>
               
               <Text style={styles.disclaimerText}>
                 بتسجيل الدخول أو إنشاء حساب فإنك توافق على <Text style={styles.disclaimerLink} onPress={() => router.push('/info/terms')}>شروط وأحكام سوق الصفاة</Text>

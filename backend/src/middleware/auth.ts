@@ -1,5 +1,6 @@
 // src/middleware/auth.ts
 // FIX: checks token blacklist in session DB (not cache DB), consistent error format
+// TODO(Migration): legacy JWT roles (e.g. BUTCHER) remain valid until capability-based auth ships.
 import { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAccessToken, JwtPayload } from '@/lib/jwt';
 import { sessionGet } from '@/lib/redis';

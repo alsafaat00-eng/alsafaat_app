@@ -106,7 +106,7 @@ async function registerButcher(req: AuthedRequest, res: NextApiResponse) {
     data: { ...parsed.data, country: parsed.data.country as any, userId: req.user.userId },
   });
 
-  // Update User role to BUTCHER
+  // TODO(Migration): remove role assignment after Butcher Application workflow ships (capability-only model).
   await prisma.user.update({
     where: { id: req.user.userId },
     data: { role: 'BUTCHER' },

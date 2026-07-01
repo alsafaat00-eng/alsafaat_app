@@ -17,6 +17,7 @@ setupRtl();
 WebBrowser.maybeCompleteAuthSession();
 
 // ── Auth Guard ────────────────────────────────────────────────────────────────
+// TODO(Migration): remove activeMode shell redirects when capability-based navigation ships.
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, activeMode } = useAuth();
   const router = useRouter();

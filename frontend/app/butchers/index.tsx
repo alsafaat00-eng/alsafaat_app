@@ -194,7 +194,7 @@ const GCC_COUNTRIES: { code: Country; label: string; flag: string }[] = [
 
 export default function ButchersScreen() {
   const router = useRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, isAuthenticated } = useAuth();
   const [butchersList, setButchersList] = useState<ButcherProfile[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<Country | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -422,7 +422,13 @@ export default function ButchersScreen() {
             <Text style={s.sectionTitle}>الملاحم ({filtered.length})</Text>
             <Pressable
               style={s.addBtn}
-              onPress={() => router.push('/butchers/register')}
+              onPress={() => {
+                if (!isAuthenticated) {
+                  router.push('/auth/phone');
+                  return;
+                }
+                router.push('/butchers/register');
+              }}
             >
               <Ionicons name="add" size={14} color={colors.electricBright} />
               <Text style={s.addBtnText}>سجّل ملحمتك</Text>

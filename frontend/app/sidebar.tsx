@@ -81,7 +81,7 @@ export default function SidebarScreen() {
             <Ionicons name={rtlForwardIcon} size={20} color={colors.textMuted} />
           </Pressable>
 
-          {/* Mode Switcher for Butchers */}
+          {/* TODO(Migration): legacy butcher/buyer mode switch — remove after capability-based navigation. */}
           {user?.role === 'BUTCHER' && (
             <Pressable
               onPress={() => {

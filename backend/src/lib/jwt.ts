@@ -2,6 +2,7 @@
 // FIX: validate secrets at startup — refuse to boot if missing or weak
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import type { Role } from '@prisma/client';
 
 function requireSecret(name: string, min = 32): string {
   const val = process.env[name];
@@ -23,7 +24,7 @@ const REFRESH_EXPIRES    = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 export interface JwtPayload {
   userId:            string;
   username:          string;
-  role:              string;
+  role:              Role;
   passwordVersion?:  number; // absent on legacy tokens; validated in auth middleware
   iat?: number;
   exp?: number;

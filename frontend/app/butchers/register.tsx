@@ -4,7 +4,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from '@/components/ui/AppLinearGradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -618,7 +618,7 @@ function FormField({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ButcherRegisterScreen() {
   const router = useRouter();
-  const { accessToken, refreshSession, switchMode, sendOtp, verifyOtp } = useAuth();
+  const { accessToken, isAuthenticated, isLoading, refreshSession, switchMode, sendOtp, verifyOtp } = useAuth();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>('type');
   const [butcherType, setButcherType] = useState<ButcherTypeChoice>('regular');
@@ -633,6 +633,14 @@ export default function ButcherRegisterScreen() {
   const [otpVerified, setOtpVerified] = useState(false);
   const [otpBusy, setOtpBusy] = useState(false);
   const [otpError, setOtpError] = useState('');
+
+  // Sprint 1: butcher shop setup requires a standard user account first.
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/auth/phone');
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   const selectedCountry = (form.country as Country) ?? 'SA';
   const phoneCode = countries[selectedCountry].phoneCode;
@@ -804,6 +812,14 @@ export default function ButcherRegisterScreen() {
         )}
       </View>
 
+      {/* User-facing notice: legacy path until formal butcher application ships */}
+      <View style={s.migrationBanner}>
+        <Ionicons name="information-circle-outline" size={18} color={colors.glow} />
+        <Text style={s.migrationBannerText}>
+          سجّل الدخول أولاً لإكمال بيانات ملحمتك. قريباً ستتم إعادة هذه الخطوات عبر طلب رسمي من داخل حسابك.
+        </Text>
+      </View>
+
       {/* Step bar */}
       {step !== 'success' && (
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
@@ -871,6 +887,25 @@ const s = StyleSheet.create({
   },
   headerTitle: { ...typography.h3, color: colors.textPrimary },
   headerSub: { ...typography.caption, color: colors.glow, marginTop: 1 },
+  migrationBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgGlass,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  migrationBannerText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 20,
+    textAlign: 'right',
+  },
 });
 
 const sb = StyleSheet.create({
