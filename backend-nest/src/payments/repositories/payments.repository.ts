@@ -1,0 +1,306 @@
+import { Injectable } from '@nestjs/common';
+import { PaymentReferenceType, Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+
+@Injectable()
+export class PaymentsRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findSubscriptionForPayment(referenceId: string, userId: string) {
+    return this.prisma.subscription.findFirst({
+      where: { id: referenceId, userId },
+      select: { id: true, planId: true, renewDate: true, autoRenew: true },
+    });
+  }
+
+  findPendingFee(referenceId: string, userId: string) {
+    return this.prisma.listingFee.findFirst({
+      where: {
+        id: referenceId,
+        userId,
+        status: { in: ['pending', 'overdue'] },
+      },
+      select: { id: true, commission: true },
+    });
+  }
+
+  findUserContact(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, displayName: true, arabicName: true },
+    });
+  }
+
+  findPendingPayment(where: {
+    userId: string;
+    referenceId: string;
+    referenceType: PaymentReferenceType;
+  }) {
+    return this.prisma.payment.findFirst({
+      where: {
+        userId: where.userId,
+        status: 'pending',
+        referenceId: where.referenceId,
+        referenceType: where.referenceType,
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, checkoutUrl: true, orderId: true },
+    });
+  }
+
+  createPendingPaymentOrReturnExisting(params: {
+    userId: string;
+    orderId: string;
+    amount: number;
+    currency: string;
+    method: string;
+    description?: string;
+    descriptionAr?: string;
+    metadata: Record<string, unknown>;
+    referenceId: string;
+    referenceType: PaymentReferenceType;
+    subscriptionId?: string;
+    feeId?: string;
+  }) {
+    const pendingWhere = {
+      userId: params.userId,
+      status: 'pending' as const,
+      referenceId: params.referenceId,
+      referenceType: params.referenceType,
+    };
+
+    return this.prisma.$transaction(async (tx) => {
+      const existingPending = await tx.payment.findFirst({
+        where: pendingWhere,
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, checkoutUrl: true, orderId: true },
+      });
+      if (existingPending) return { existingPending };
+
+      try {
+        const payment = await tx.payment.create({
+          data: {
+            userId: params.userId,
+            orderId: params.orderId,
+            amount: params.amount,
+            currency: params.currency,
+            method: params.method as Prisma.PaymentCreateInput['method'],
+            status: 'pending',
+            description: params.description,
+            descriptionAr: params.descriptionAr,
+            metadata: params.metadata as Prisma.InputJsonValue,
+            referenceId: params.referenceId,
+            referenceType: params.referenceType,
+            ...(params.subscriptionId
+              ? { subscriptionId: params.subscriptionId }
+              : {}),
+            ...(params.feeId ? { feeId: params.feeId } : {}),
+          },
+        });
+        return { payment };
+      } catch (err: unknown) {
+        const e = err as { code?: string; meta?: { target?: unknown } };
+        const isPendingRefUniqueViolation =
+          e?.code === 'P2002' &&
+          (String(e?.meta?.target ?? '').includes('referenceId') ||
+            String(e?.meta?.target ?? '').includes(
+              'Payment_userId_referenceId_referenceType_pending_key',
+            ));
+        if (isPendingRefUniqueViolation) {
+          const racedPending = await tx.payment.findFirst({
+            where: pendingWhere,
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, checkoutUrl: true, orderId: true },
+          });
+          if (racedPending) return { existingPending: racedPending };
+        }
+        throw err;
+      }
+    });
+  }
+
+  markPaymentFailed(paymentId: string) {
+    return this.prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'failed' },
+    });
+  }
+
+  updatePaymentCheckout(
+    paymentId: string,
+    data: {
+      transactionId: string;
+      checkoutUrl: string;
+      metadata: Record<string, unknown>;
+    },
+  ) {
+    return this.prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        transactionId: data.transactionId,
+        checkoutUrl: data.checkoutUrl,
+        metadata: data.metadata as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  findPaymentForWebhook(
+    internalPaymentId: string | undefined,
+    merchantOrderRef: string,
+  ) {
+    return this.prisma.payment.findFirst({
+      where: internalPaymentId
+        ? { id: internalPaymentId }
+        : { orderId: merchantOrderRef },
+    });
+  }
+
+  processSuccessfulPayment(params: {
+    paymentId: string;
+    niTransactionId: string;
+    type: string | undefined;
+    referenceId: string | undefined;
+    userId: string;
+    targetPlanId: string | undefined;
+    billingCycle: string;
+    storedMeta: Record<string, unknown>;
+  }): Promise<{
+    processed: boolean;
+    subscription?: { targetPlanId: string; newRenewDate: Date };
+  }> {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.payment.updateMany({
+        where: { id: params.paymentId, status: 'pending' },
+        data: {
+          status: 'paid',
+          transactionId: params.niTransactionId,
+          paidAt: new Date(),
+        },
+      });
+      if (updated.count === 0) return { processed: false };
+
+      let subscriptionResult:
+        { targetPlanId: string; newRenewDate: Date } | undefined;
+
+      if (params.type === 'subscription' && params.referenceId) {
+        if (params.storedMeta.subscriptionFulfilled === true) {
+          return { processed: true };
+        }
+
+        const sub = await tx.subscription.findUnique({
+          where: { id: params.referenceId },
+          select: { id: true, renewDate: true },
+        });
+        if (!sub) {
+          throw new Error('Subscription not found for payment fulfillment');
+        }
+
+        const now = new Date();
+        const renewDays = params.billingCycle === 'yearly' ? 365 : 30;
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const baseDate = sub.renewDate > now ? sub.renewDate : now;
+        const newRenewDate = new Date(
+          baseDate.getTime() + renewDays * msPerDay,
+        );
+
+        const planId =
+          params.targetPlanId &&
+          ['starter', 'pro', 'vip'].includes(params.targetPlanId)
+            ? (params.targetPlanId as Prisma.SubscriptionUpdateInput['planId'])
+            : undefined;
+
+        const updateData: Prisma.SubscriptionUpdateInput = {
+          renewDate: newRenewDate,
+          billingCycle:
+            params.billingCycle as Prisma.SubscriptionUpdateInput['billingCycle'],
+          autoRenew: true,
+          listingsUsed: 0,
+          liveMinutesUsed: 0,
+        };
+        if (planId) {
+          updateData.planId = planId;
+        }
+        await tx.subscription.update({
+          where: { id: params.referenceId },
+          data: updateData,
+        });
+
+        await tx.payment.update({
+          where: { id: params.paymentId },
+          data: {
+            metadata: {
+              ...params.storedMeta,
+              subscriptionFulfilled: true,
+            } as Prisma.InputJsonValue,
+          },
+        });
+
+        if (params.targetPlanId === 'vip') {
+          await tx.user
+            .update({
+              where: { id: params.userId },
+              data: { verified: true },
+            })
+            .catch(() => {});
+        }
+
+        await tx.butcher
+          .updateMany({
+            where: { userId: params.userId },
+            data: {
+              subscriptionActive: true,
+              subscriptionExpiry: newRenewDate,
+            },
+          })
+          .catch(() => {});
+
+        subscriptionResult = {
+          targetPlanId: params.targetPlanId ?? 'starter',
+          newRenewDate,
+        };
+      }
+
+      if (
+        (params.type === 'fee' || params.type === 'listing_fee') &&
+        params.referenceId
+      ) {
+        await tx.listingFee.update({
+          where: { id: params.referenceId },
+          data: {
+            status: 'paid',
+            paidAt: new Date(),
+            transactionId: params.niTransactionId,
+          },
+        });
+        const fee = await tx.listingFee.findUnique({
+          where: { id: params.referenceId },
+        });
+        if (fee) {
+          await tx.listing.update({
+            where: { id: fee.listingId },
+            data: { status: 'active' },
+          });
+        }
+      }
+
+      return { processed: true, subscription: subscriptionResult };
+    });
+  }
+
+  markPaymentRefunded(paymentId: string, metadata: Record<string, unknown>) {
+    return this.prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: 'refunded',
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  markPaymentFailedById(paymentId: string) {
+    return this.prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'failed' },
+    });
+  }
+}

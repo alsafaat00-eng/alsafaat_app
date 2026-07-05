@@ -1,0 +1,103 @@
+// Powered by OnSpace.AI
+import { AppIcon } from '@/components/ui/FlaticonIcon';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { spacing, typography, type ThemeColors } from '@/constants/theme';
+import { useThemedStyles } from '@/hooks/useThemedStyles';
+import { rtlBackIcon, rtlDirection, rtlRow } from '@/lib/rtl';
+
+interface ScreenHeaderProps {
+  title: string;
+  arabic?: string;
+  showBack?: boolean;
+  rightIcon?: string;
+  onRightPress?: () => void;
+  showSidebar?: boolean;
+  onSidebar?: () => void;
+}
+
+export function ScreenHeader({
+  title,
+  arabic,
+  showBack,
+  rightIcon,
+  onRightPress,
+  showSidebar,
+  onSidebar,
+}: ScreenHeaderProps) {
+  const router = useRouter();
+  const { styles, colors } = useThemedStyles((theme) => ({
+    styles: createStyles(theme.colors),
+    colors: theme.colors,
+  }));
+
+  return (
+    <View style={[styles.container, rtlDirection]}>
+      <View style={styles.side}>
+        {showBack ? (
+          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.iconBtn}>
+            <AppIcon name={rtlBackIcon} size={24} color={colors.textPrimary} />
+          </Pressable>
+        ) : showSidebar ? (
+          <Pressable onPress={onSidebar} hitSlop={12} style={styles.iconBtn}>
+            <AppIcon name="menu-burger" size={24} color={colors.textPrimary} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      <View style={styles.titleWrap}>
+        <Text style={styles.title}>{title}</Text>
+        {arabic ? <Text style={styles.arabic}>{arabic}</Text> : null}
+      </View>
+
+      <View style={[styles.side, { alignItems: 'flex-end' }]}>
+        {rightIcon ? (
+          <Pressable onPress={onRightPress} hitSlop={12} style={styles.iconBtn}>
+            <AppIcon name={rightIcon} size={22} color={colors.textPrimary} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      ...rtlRow,
+      alignItems: 'center',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      backgroundColor: colors.bgDeep,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderSoft,
+    },
+    side: {
+      width: 40,
+    },
+    titleWrap: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    title: {
+      ...typography.h3,
+      color: colors.textPrimary,
+    },
+    arabic: {
+      ...typography.micro,
+      color: colors.textBrand,
+    },
+    iconBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.bgGlass,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+    },
+  });
+}
+
+export default ScreenHeader;

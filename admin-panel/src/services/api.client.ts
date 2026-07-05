@@ -1,0 +1,55 @@
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+
+const SERVER_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+/** Browser uses same-origin /api (proxied by next.config rewrites) to avoid CORS. */
+export const API_URL =
+  typeof window !== 'undefined' ? '' : SERVER_API_URL;
+
+export const apiClient = axios.create({
+  baseURL: typeof window !== 'undefined' ? '/api' : `${SERVER_API_URL}/api`,
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+export type ApiEnvelope<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+  messageAr?: string;
+  timestamp?: string;
+};
+
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('admin_access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (res) => res,
+  (error: AxiosError<ApiEnvelope<unknown>>) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('admin_access_token');
+      localStorage.removeItem('admin_refresh_token');
+      localStorage.removeItem('admin_user');
+      document.cookie = 'admin_token=; path=/; max-age=0';
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
+export function unwrap<T>(res: { data: ApiEnvelope<T> }): T {
+  const body = res.data;
+  if (!body.success || body.data === undefined) {
+    throw new Error(body.messageAr ?? body.error ?? 'خطأ في الخادم');
+  }
+  return body.data;
+}

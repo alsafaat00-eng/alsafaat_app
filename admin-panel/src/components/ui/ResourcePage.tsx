@@ -1,0 +1,137 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+
+export type Column<T> = {
+  key: string;
+  label: string;
+  render?: (row: T) => React.ReactNode;
+};
+
+type Props<T> = {
+  title: string;
+  description?: string;
+  columns: Column<T>[];
+  fetchPage: (params: { page: number; search: string }) => Promise<{
+    items: T[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }>;
+  actions?: (row: T, reload: () => void) => React.ReactNode;
+  filters?: React.ReactNode;
+};
+
+export function ResourcePage<T extends { id: string }>({
+  title,
+  description,
+  columns,
+  fetchPage,
+  actions,
+  filters,
+}: Props<T>) {
+  const [items, setItems] = useState<T[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await fetchPage({ page, search });
+      setItems(data.items as T[]);
+      setTotalPages(data.totalPages);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'خطأ');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchPage, page, search]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <div>
+      <PageHeader title={title} description={description} />
+      <div className="mb-4 flex flex-wrap gap-3">
+        <input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          placeholder="بحث..."
+          className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500"
+        />
+        {filters}
+        <Button variant="secondary" onClick={load}>
+          تحديث
+        </Button>
+      </div>
+      {error && <p className="mb-4 text-rose-400">{error}</p>}
+      <div className="overflow-x-auto rounded-2xl border border-slate-800">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-900 text-slate-400">
+            <tr>
+              {columns.map((c) => (
+                <th key={c.key} className="px-4 py-3 text-right font-medium">
+                  {c.label}
+                </th>
+              ))}
+              {actions && <th className="px-4 py-3 text-right">إجراءات</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-slate-500">
+                  جارٍ التحميل...
+                </td>
+              </tr>
+            ) : items.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-slate-500">
+                  لا توجد بيانات
+                </td>
+              </tr>
+            ) : (
+              items.map((row) => (
+                <tr key={row.id} className="border-t border-slate-800 hover:bg-slate-900/50">
+                  {columns.map((c) => (
+                    <td key={c.key} className="px-4 py-3 text-slate-200">
+                      {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '—')}
+                    </td>
+                  ))}
+                  {actions && <td className="px-4 py-3">{actions(row, load)}</td>}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
+        <span>
+          صفحة {page} من {totalPages}
+        </span>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            السابق
+          </Button>
+          <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            التالي
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { Badge };
