@@ -22,6 +22,7 @@ import { SubscriptionQueueService } from './services/subscription-queue.service'
 import { WorkerCronService } from './services/worker-cron.service';
 import { SubscriptionProcessor } from './processors/subscription.processor';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
 
 const bullImports = isRedisEnabled()
   ? [
@@ -93,7 +94,7 @@ const bullImports = isRedisEnabled()
 export class QueueModule {}
 
 @Module({
-  imports: [QueueModule, SubscriptionsModule],
+  imports: [QueueModule, SubscriptionsModule, KnowledgeModule],
   providers: [
     NotificationProcessor,
     PushProcessor,

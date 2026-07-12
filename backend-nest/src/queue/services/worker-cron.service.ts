@@ -5,6 +5,7 @@ import { WorkerCronRepository } from '../repositories/worker-cron.repository';
 import { RedisCacheService } from '../../redis/services/redis-cache.service';
 import { FeeCheckQueueService } from './fee-check-queue.service';
 import { SubscriptionQueueService } from './subscription-queue.service';
+import { KnowledgeCenterService } from '../../knowledge/services/knowledge-center.service';
 
 @Injectable()
 export class WorkerCronService implements OnModuleDestroy {
@@ -16,10 +17,13 @@ export class WorkerCronService implements OnModuleDestroy {
     private readonly cache: RedisCacheService,
     private readonly feeCheckQueue: FeeCheckQueueService,
     private readonly subscriptionQueue: SubscriptionQueueService,
+    private readonly knowledge: KnowledgeCenterService,
     private readonly logger: LoggerService,
   ) {
     this.interval = setInterval(() => void this.tick(), 60 * 60 * 1000);
     this.logger.info({}, '🔧 Workers started');
+    // Kick an initial delayed sync so knowledge starts without waiting a full hour
+    setTimeout(() => void this.runKnowledgeSyncCron(), 20_000);
   }
 
   onModuleDestroy() {
@@ -138,6 +142,24 @@ export class WorkerCronService implements OnModuleDestroy {
     });
   }
 
+  private async runKnowledgeSyncCron(): Promise<void> {
+    const run = async () => {
+      this.logger.info({}, 'Running knowledge center hourly sync');
+      await this.knowledge.syncAll();
+    };
+
+    if (!this.cache.isEnabled()) {
+      try {
+        await run();
+      } catch (err) {
+        this.logger.error({ err }, 'Knowledge sync cron error');
+      }
+      return;
+    }
+
+    await this.withLock('cron:knowledge_sync:lock', 50 * 60, run);
+  }
+
   private async tick(): Promise<void> {
     if (this.shouldRun('fee_check', 9)) {
       await this.runFeeCheckCron();
@@ -152,5 +174,8 @@ export class WorkerCronService implements OnModuleDestroy {
     if (now.getDay() === 1 && this.shouldRun('subscription_weekly', 4)) {
       await this.runWeeklyLiveMinutesReset();
     }
+
+    // Knowledge Center: every hourly tick
+    await this.runKnowledgeSyncCron();
   }
 }

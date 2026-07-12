@@ -18,6 +18,7 @@ import { LivestreamsModule } from './livestreams/livestreams.module';
 import { MessagesModule } from './messages/messages.module';
 import { UploadModule } from './upload/upload.module';
 import { AdminModule } from './admin/admin.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 import { FeesModule } from './fees/fees.module';
 import { SearchModule } from './search/search.module';
 import { HealthModule } from './health/health.module';
@@ -47,6 +48,7 @@ import { GatewaySharedModule } from './gateway/gateway-shared.module';
     MessagesModule,
     UploadModule,
     AdminModule,
+    KnowledgeModule,
     FeesModule,
     SearchModule,
     HealthModule,

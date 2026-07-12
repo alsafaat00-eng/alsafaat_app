@@ -26,6 +26,7 @@ export interface User {
   avatar?: string;
   coverImage?: string;
   verified: boolean;
+  isAI?: boolean;
   followers: number;
   following: number;
   rating: number | null;

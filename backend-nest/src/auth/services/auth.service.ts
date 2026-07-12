@@ -36,6 +36,7 @@ function formatUser(user: {
   arabicName: string;
   avatar: string | null;
   verified: boolean;
+  isAI?: boolean;
   country: string;
   role: string;
   phone?: string | null;
@@ -49,6 +50,7 @@ function formatUser(user: {
     arabicName: user.arabicName,
     avatar: user.avatar,
     verified: user.verified,
+    isAI: user.isAI ?? false,
     country: user.country,
     role: user.role,
     subscription: user.subscription,
@@ -97,6 +99,11 @@ export class AuthService {
         'Failed login attempt',
       );
       throwApi(401, 'invalid_credentials', 'بيانات الدخول غير صحيحة');
+    }
+
+    if (user.isAI) {
+      this.logger.warn({ userId: user.id }, 'Blocked login for AI account');
+      throwApi(403, 'ai_account', 'لا يمكن تسجيل الدخول إلى حساب مركز المعرفة');
     }
 
     await this.enforceSessionLimit(user.id);
@@ -441,6 +448,10 @@ export class AuthService {
       };
     }
 
+    if (user.isAI) {
+      throwApi(403, 'ai_account', 'لا يمكن تسجيل الدخول إلى حساب مركز المعرفة');
+    }
+
     await this.enforceSessionLimit(user.id);
     const accessToken = this.jwt.signAccessToken({
       userId: user.id,
@@ -528,6 +539,10 @@ export class AuthService {
         googleUser!.googleId,
         user.avatar ?? googleUser!.avatar,
       );
+    }
+
+    if (user.isAI) {
+      throwApi(403, 'ai_account', 'لا يمكن تسجيل الدخول إلى حساب مركز المعرفة');
     }
 
     await this.enforceSessionLimit(user.id);

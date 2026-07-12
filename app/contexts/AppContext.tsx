@@ -61,6 +61,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatar: u.avatar || undefined,
       coverImage: u.coverImage || undefined,
       verified: u.verified ?? false,
+      isAI: u.isAI ?? false,
       followers: u.followersCount ?? 0,
       following: u.followingCount ?? 0,
       rating: typeof u.rating === 'number' ? u.rating : null,

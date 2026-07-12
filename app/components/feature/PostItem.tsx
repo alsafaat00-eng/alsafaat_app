@@ -89,6 +89,11 @@ export function PostItem({
               {post.author.verified ? (
                 <AppIcon name="checkmark-circle" size={15} color={colors.electricBright} />
               ) : null}
+              {post.author.isAI ? (
+                <View style={styles.aiBadge}>
+                  <Text style={styles.aiBadgeText}>مدعوم بالذكاء الاصطناعي</Text>
+                </View>
+              ) : null}
               <Text style={styles.metaMuted} numberOfLines={1}>
                 @{post.author.username}
               </Text>
@@ -217,6 +222,19 @@ function createStyles(colors: ThemeColors, scheme: 'light' | 'dark') {
       ...typography.bodyStrong,
       color: colors.textPrimary,
       fontSize: 15,
+    },
+    aiBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
+      backgroundColor: colors.electric + '22',
+      borderWidth: 1,
+      borderColor: colors.electric + '55',
+    },
+    aiBadgeText: {
+      ...typography.micro,
+      color: colors.electricBright,
+      fontWeight: '700',
     },
     metaMuted: {
       ...typography.caption,

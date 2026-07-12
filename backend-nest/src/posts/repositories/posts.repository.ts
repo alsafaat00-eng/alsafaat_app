@@ -10,6 +10,7 @@ export const POST_AUTHOR_SELECT = {
   arabicName: true,
   avatar: true,
   verified: true,
+  isAI: true,
 } as const;
 
 const POST_INCLUDE = {

@@ -22,6 +22,7 @@ model User {
   coverImage       String?
   bio              String?
   verified         Boolean        @default(false)
+  isAI             Boolean        @default(false)
   country          Country        @default(SA)
   role             Role           @default(USER)
   isActive         Boolean        @default(true)
@@ -277,6 +278,7 @@ model Post {
   comments      PostComment[]
   likes         PostLike[]
   reposts       PostRepost[]
+  knowledgeArticle KnowledgeArticle?
 
   @@index([authorId])
   @@index([createdAt])
@@ -1008,4 +1010,66 @@ enum TicketStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+enum KnowledgeSourceType {
+  RSS
+  API
+}
+
+enum KnowledgeArticleStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model KnowledgeSource {
+  id        String              @id @default(uuid())
+  name      String
+  url       String
+  type      KnowledgeSourceType @default(RSS)
+  enabled   Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  articles  KnowledgeArticle[]
+  syncLogs  KnowledgeSyncLog[]
+
+  @@index([enabled])
+  @@index([type])
+}
+
+model KnowledgeArticle {
+  id            String                 @id @default(uuid())
+  sourceId      String
+  originalTitle String
+  originalUrl   String                 @unique
+  summary       String?
+  titleAr       String?
+  publishedAt   DateTime?
+  status        KnowledgeArticleStatus @default(PENDING)
+  postId        String?                @unique
+  errorMessage  String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  source        KnowledgeSource        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  post          Post?                  @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([createdAt])
+}
+
+model KnowledgeSyncLog {
+  id        String           @id @default(uuid())
+  sourceId  String?
+  level     String
+  message   String
+  meta      Json?
+  createdAt DateTime         @default(now())
+  source    KnowledgeSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([sourceId])
+  @@index([level])
 }
