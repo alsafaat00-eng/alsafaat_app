@@ -6,6 +6,7 @@ const apiUrl = rawApiUrl.includes(':3000')
   : rawApiUrl.replace(/\/$/, '').replace('localhost', '127.0.0.1');
 
 const nextConfig = {
+  output: 'standalone',
   async rewrites() {
     return [
       {
