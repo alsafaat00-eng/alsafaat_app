@@ -221,7 +221,7 @@ export default function ButchersScreen() {
             const mapped = json.data.map((s: any) => ({
               id: s.id,
               butcherId: s.butcherId,
-              butcherName: s.butcher?.nameEn || 'Butcher',
+              butcherName: s.butcher?.nameAr || s.butcher?.nameEn || 'ملحمة',
               butcherNameAr: s.butcher?.nameAr || 'ملحمة',
               butcherLogo: s.butcher?.logo || undefined,
               isVerified: s.butcher?.subscriptionActive || false,
@@ -253,7 +253,7 @@ export default function ButchersScreen() {
           if (json.success && json.data?.butchers) {
             const mapped = json.data.butchers.map((b: any) => ({
               id: b.id,
-              name: b.nameEn,
+              name: b.nameAr || b.nameEn,
               nameAr: b.nameAr,
               logo: b.logo || undefined,
               cover: b.cover || undefined,
@@ -275,7 +275,7 @@ export default function ButchersScreen() {
                 isOpen: b.isOpen ?? true,
                 closedOn: b.closedDays || [],
               },
-              bio: b.bioEn || '',
+              bio: b.bioAr || b.bioEn || '',
               bioAr: b.bioAr || '',
               specialties: b.specialties || [],
               subscriptionActive: b.subscriptionActive ?? false,

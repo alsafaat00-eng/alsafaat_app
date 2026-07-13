@@ -164,6 +164,7 @@ export default function RegisterScreen() {
         phone:        fullPhone,
         phone_token:  result.phoneToken,
         displayName:  displayName.trim(),
+        arabicName:   displayName.trim(),
         username:     username.trim().toLowerCase(),
         country:      currentCountry.dbCode,
         email:       emailInput.trim().toLowerCase() || undefined,

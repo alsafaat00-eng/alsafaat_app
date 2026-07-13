@@ -94,20 +94,22 @@ function emptyForm(): WizardForm {
 }
 
 function applicationToForm(app: ApplicationDetail): WizardForm {
+  const city = app.cityAr || app.city || '';
+  const address = app.addressAr || app.address || '';
   return {
     nameAr: app.nameAr ?? '',
-    nameEn: app.nameEn ?? '',
+    nameEn: app.nameEn ?? app.nameAr ?? '',
     shopPhone: app.shopPhone ?? '',
     commercialReg: app.commercialReg ?? '',
     country: 'SA',
-    city: app.city ?? '',
-    cityAr: app.cityAr ?? '',
-    address: app.address ?? '',
-    addressAr: app.addressAr ?? '',
+    city,
+    cityAr: city,
+    address,
+    addressAr: address,
     lat: app.lat != null ? String(app.lat) : '',
     lng: app.lng != null ? String(app.lng) : '',
     bioAr: app.bioAr ?? '',
-    bioEn: app.bioEn ?? '',
+    bioEn: app.bioEn ?? app.bioAr ?? '',
     specialtiesText: app.specialties?.length ? app.specialties.join('، ') : '',
     openTime: app.openTime || '06:00',
     closeTime: app.closeTime || '22:00',
@@ -122,16 +124,19 @@ function parseSpecialties(text: string): string[] {
 }
 
 function step1Snapshot(form: WizardForm): ApplicationSnapshotInput {
+  const name = form.nameAr.trim();
+  const city = form.cityAr.trim();
+  const address = form.addressAr.trim();
   return {
-    nameAr: form.nameAr.trim(),
-    nameEn: form.nameEn.trim(),
+    nameAr: name,
+    nameEn: name,
     shopPhone: form.shopPhone.trim(),
     commercialReg: form.commercialReg.trim(),
     country: 'SA',
-    city: form.city.trim(),
-    cityAr: form.cityAr.trim(),
-    address: form.address.trim(),
-    addressAr: form.addressAr.trim(),
+    city,
+    cityAr: city,
+    address,
+    addressAr: address,
   };
 }
 
@@ -144,9 +149,10 @@ function step2Snapshot(form: WizardForm): ApplicationSnapshotInput {
 
 function step3Snapshot(form: WizardForm): ApplicationSnapshotInput {
   const specialties = parseSpecialties(form.specialtiesText);
+  const bio = form.bioAr.trim() || undefined;
   return {
-    bioAr: form.bioAr.trim() || undefined,
-    bioEn: form.bioEn.trim() || undefined,
+    bioAr: bio,
+    bioEn: bio,
     specialties: specialties.length > 0 ? specialties : undefined,
     openTime: form.openTime.trim(),
     closeTime: form.closeTime.trim(),
@@ -481,17 +487,10 @@ export default function ButcherApplicationEditScreen() {
         <Text style={s.stepSub}>أدخل بيانات ملحمتك الأساسية كما ستظهر للعملاء</Text>
 
         <AppTextInput
-          label="اسم المحل بالعربية *"
+          label="اسم المحل *"
           value={form.nameAr}
-          onChangeText={(v) => patchForm({ nameAr: v })}
-          error={fieldErrors.nameAr}
-        />
-        <AppTextInput
-          label="اسم المحل بالإنجليزية *"
-          value={form.nameEn}
-          onChangeText={(v) => patchForm({ nameEn: v })}
-          ltr
-          error={fieldErrors.nameEn}
+          onChangeText={(v) => patchForm({ nameAr: v, nameEn: v })}
+          error={fieldErrors.nameAr || fieldErrors.nameEn}
         />
         <AppTextInput
           label="هاتف المحل *"
@@ -516,29 +515,16 @@ export default function ButcherApplicationEditScreen() {
 
         <AppTextInput
           label="المدينة *"
-          value={form.city}
-          onChangeText={(v) => patchForm({ city: v })}
-          error={fieldErrors.city}
-        />
-        <AppTextInput
-          label="المدينة (عربي) *"
           value={form.cityAr}
-          onChangeText={(v) => patchForm({ cityAr: v })}
-          error={fieldErrors.cityAr}
+          onChangeText={(v) => patchForm({ cityAr: v, city: v })}
+          error={fieldErrors.cityAr || fieldErrors.city}
         />
         <AppTextInput
           label="العنوان *"
-          value={form.address}
-          onChangeText={(v) => patchForm({ address: v })}
-          multiline
-          error={fieldErrors.address}
-        />
-        <AppTextInput
-          label="العنوان (عربي) *"
           value={form.addressAr}
-          onChangeText={(v) => patchForm({ addressAr: v })}
+          onChangeText={(v) => patchForm({ addressAr: v, address: v })}
           multiline
-          error={fieldErrors.addressAr}
+          error={fieldErrors.addressAr || fieldErrors.address}
         />
       </View>
     );
@@ -589,19 +575,11 @@ export default function ButcherApplicationEditScreen() {
         <Text style={s.stepSub}>نبذة عن ملحمتك وساعات العمل</Text>
 
         <AppTextInput
-          label="نبذة بالعربية"
+          label="نبذة"
           value={form.bioAr}
-          onChangeText={(v) => patchForm({ bioAr: v })}
+          onChangeText={(v) => patchForm({ bioAr: v, bioEn: v })}
           multiline
           error={fieldErrors.bioAr}
-        />
-        <AppTextInput
-          label="نبذة بالإنجليزية"
-          value={form.bioEn}
-          onChangeText={(v) => patchForm({ bioEn: v })}
-          multiline
-          ltr
-          error={fieldErrors.bioEn}
         />
         <AppTextInput
           label="التخصصات"
@@ -655,7 +633,7 @@ export default function ButcherApplicationEditScreen() {
           <ReviewRow label="الهاتف" value={snap.shopPhone ?? ''} />
           <ReviewRow label="السجل التجاري" value={snap.commercialReg ?? ''} />
           <ReviewRow label="الدولة" value={countryLabel(snap.country ?? null)} />
-          <ReviewRow label="المدينة" value={`${snap.city ?? ''} · ${snap.cityAr ?? ''}`} />
+          <ReviewRow label="المدينة" value={snap.cityAr ?? snap.city ?? ''} />
           <ReviewRow label="العنوان" value={snap.addressAr ?? snap.address ?? ''} />
           <ReviewRow
             label="الموقع"

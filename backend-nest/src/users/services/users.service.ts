@@ -70,30 +70,46 @@ export class UsersService {
       throwApi(403, 'forbidden', 'غير مسموح');
     }
 
-    const { fcmToken, ...profileData } = dto;
-    const updated = await this.repo.updateUser(id, {
-      ...profileData,
-      ...(fcmToken !== undefined ? { fcmToken } : {}),
-    });
+    if (dto.username) {
+      const conflict = await this.repo.findByUsername(dto.username, id);
+      if (conflict) {
+        throwApi(409, 'username_taken', 'اسم المستخدم مستخدم بالفعل');
+      }
+    }
 
-    await this.redis.cacheDel(`user:${id}`);
-    this.logger.info({ userId: id }, 'User profile updated');
+    try {
+      const { fcmToken, ...profileData } = dto;
+      const updated = await this.repo.updateUser(id, {
+        ...profileData,
+        ...(fcmToken !== undefined ? { fcmToken } : {}),
+      });
 
-    const reviewCount = updated.butcherProfile?.reviewCount ?? 0;
-    return {
-      id: updated.id,
-      username: updated.username,
-      displayName: updated.displayName,
-      arabicName: updated.arabicName,
-      avatar: updated.avatar,
-      coverImage: updated.coverImage,
-      bio: updated.bio,
-      verified: updated.verified,
-      country: updated.country,
-      rating: reviewCount > 0 ? updated.butcherProfile!.rating : null,
-      reviewCount,
-      followersCount: updated._count.followers,
-    };
+      await this.redis.cacheDel(`user:${id}`);
+      this.logger.info({ userId: id }, 'User profile updated');
+
+      const reviewCount = updated.butcherProfile?.reviewCount ?? 0;
+      return {
+        id: updated.id,
+        username: updated.username,
+        displayName: updated.displayName,
+        arabicName: updated.arabicName,
+        avatar: updated.avatar,
+        coverImage: updated.coverImage,
+        bio: updated.bio,
+        verified: updated.verified,
+        country: updated.country,
+        rating: reviewCount > 0 ? updated.butcherProfile!.rating : null,
+        reviewCount,
+        followersCount: updated._count.followers,
+        followingCount: updated._count.following,
+      };
+    } catch (err: unknown) {
+      const prismaErr = err as { code?: string };
+      if (prismaErr.code === 'P2002') {
+        throwApi(409, 'username_taken', 'اسم المستخدم مستخدم بالفعل');
+      }
+      throw err;
+    }
   }
 
   async deleteUser(id: string, user: JwtPayload) {

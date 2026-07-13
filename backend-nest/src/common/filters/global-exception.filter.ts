@@ -46,6 +46,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             timestamp: new Date().toISOString(),
           });
         }
+        const body = payload as { message?: string | string[]; error?: string };
+        const messageAr = Array.isArray(body.message)
+          ? body.message.join('، ')
+          : typeof body.message === 'string'
+            ? body.message
+            : 'طلب غير صالح';
+        return res.status(status).json({
+          success: false,
+          error: body.error ?? (status === 400 ? 'validation_error' : 'http_error'),
+          messageAr,
+          timestamp: new Date().toISOString(),
+        });
       }
       if (status === 405) {
         return res.status(405).end();

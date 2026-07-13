@@ -37,8 +37,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const { me, updateMe } = useApp();
 
-  const [displayName, setDisplayName] = useState(me.displayName);
-  const [arabicName, setArabicName] = useState(me.arabicName);
+  const [arabicName, setArabicName] = useState(me.arabicName || me.displayName);
   const [username, setUsername] = useState(me.username);
   const [bio, setBio] = useState(me.bio);
   const [country, setCountry] = useState<Country>(me.country);
@@ -90,20 +89,24 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
-    if (!displayName.trim() || !arabicName.trim() || !username.trim()) {
+    if (!arabicName.trim() || !username.trim()) {
       Alert.alert('خطأ', 'يرجى ملء جميع الحقول المطلوبة');
       return;
     }
     setSaving(true);
-    const updates: any = { displayName, arabicName, username, bio, country };
+    const name = arabicName.trim();
+    const updates: any = { displayName: name, arabicName: name, username, bio, country };
     if (avatarUri) updates.avatar = avatarUri;
     if (coverUri) updates.coverImage = coverUri;
-    const success = await updateMe(updates);
+    const result = await updateMe(updates);
     setSaving(false);
-    if (success) {
+    if (result.ok) {
+      if (result.error) {
+        Alert.alert('تم الحفظ جزئياً', result.error);
+      }
       router.back();
     } else {
-      Alert.alert('خطأ', 'فشل حفظ التغييرات، يرجى المحاولة مجدداً.');
+      Alert.alert('خطأ', result.error || 'فشل حفظ التغييرات، يرجى المحاولة مجدداً.');
     }
   };
 
@@ -179,29 +182,13 @@ export default function EditProfileScreen() {
 
           {/* Form */}
           <View style={styles.form}>
-            {/* Display name */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>الاسم الإنجليزي *</Text>
-              <View style={styles.inputWrap}>
-                <TextInput
-                  value={displayName}
-                  onChangeText={setDisplayName}
-                  placeholder="الاسم المعروض"
-                  placeholderTextColor={colors.textMuted}
-                  style={styles.input}
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
-
-            {/* Arabic name */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>الاسم العربي *</Text>
+              <Text style={styles.fieldLabel}>الاسم *</Text>
               <View style={styles.inputWrap}>
                 <TextInput
                   value={arabicName}
                   onChangeText={setArabicName}
-                  placeholder="اسمك بالعربية"
+                  placeholder="اسمك الكامل"
                   placeholderTextColor={colors.textMuted}
                   style={[styles.input, styles.inputRtl]}
                   textAlign="right"

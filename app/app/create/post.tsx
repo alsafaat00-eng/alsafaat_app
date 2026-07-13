@@ -47,7 +47,6 @@ export default function CreatePostScreen() {
   const { me, addPost, updatePost } = useApp();
   const { accessToken } = useAuth();
 
-  const [content, setContent] = useState('');
   const [arabicContent, setArabicContent] = useState('');
   const [selectedType, setSelectedType] = useState('text');
   const [selectedHashtags, setSelectedHashtags] = useState<string[]>([]);
@@ -63,8 +62,7 @@ export default function CreatePostScreen() {
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.success && json.data) {
-          setArabicContent(json.data.arabicContent ?? '');
-          setContent(json.data.content ?? '');
+          setArabicContent(json.data.arabicContent ?? json.data.content ?? '');
         } else {
           Alert.alert('خطأ', 'تعذر تحميل المنشور');
           router.back();
@@ -82,8 +80,8 @@ export default function CreatePostScreen() {
   }, [editId, accessToken, router]);
 
   const MAX_CHARS = 280;
-  const remaining = MAX_CHARS - (arabicContent.length + content.length);
-  const canPost = (arabicContent.trim() || content.trim()) && remaining >= 0;
+  const remaining = MAX_CHARS - arabicContent.length;
+  const canPost = arabicContent.trim() && remaining >= 0;
 
   const toggleHashtag = (tag: string) => {
     setSelectedHashtags((prev) =>
@@ -100,9 +98,10 @@ export default function CreatePostScreen() {
   const handlePost = async () => {
     if (!canPost) return;
     setSubmitting(true);
+    const text = arabicContent.trim();
     const payload = {
-      content: content.trim() || arabicContent.trim(),
-      arabicContent: arabicContent.trim() || content.trim(),
+      content: text,
+      arabicContent: text,
     };
     const success = isEditing && editId
       ? await updatePost(editId, payload)
@@ -190,16 +189,6 @@ export default function CreatePostScreen() {
                 textAlign="right"
                 autoFocus
               />
-              {/* English (optional) */}
-              <TextInput
-                value={content}
-                onChangeText={setContent}
-                placeholder="ترجمة إنجليزية (اختياري)"
-                placeholderTextColor={colors.textSubtle}
-                style={[styles.textInput, styles.textInputEn]}
-                multiline
-                maxLength={MAX_CHARS}
-              />
             </View>
           </View>
 
@@ -237,7 +226,7 @@ export default function CreatePostScreen() {
           </View>
 
           {/* Preview */}
-          {(arabicContent || content) && (
+          {arabicContent.trim().length > 0 && (
             <View style={styles.previewSection}>
               <Text style={styles.previewLabel}>معاينة</Text>
               <View style={styles.previewCard}>
@@ -250,9 +239,6 @@ export default function CreatePostScreen() {
                 </View>
                 {arabicContent ? (
                   <Text style={styles.previewText}>{arabicContent}</Text>
-                ) : null}
-                {content ? (
-                  <Text style={styles.previewSubText}>{content}</Text>
                 ) : null}
               </View>
             </View>

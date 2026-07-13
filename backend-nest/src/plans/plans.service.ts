@@ -1,12 +1,16 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PlanAudience } from '@prisma/client';
+import { throwApi } from '../common/exceptions/api.exception';
+import { DEFAULT_FREE_PLANS } from './default-free-plans';
 import { PlanPermissionService } from './plan-permission.service';
 import { PlanResolverService } from './plan-resolver.service';
 import { PlansRepository } from './repositories/plans.repository';
-import type { PlanApiResponse } from './plan.types';
+import { FREE_PLAN_SLUG, type PlanApiResponse } from './plan.types';
 
 @Injectable()
 export class PlansService implements OnModuleInit {
+  private readonly logger = new Logger(PlansService.name);
+
   constructor(
     private readonly repo: PlansRepository,
     private readonly resolver: PlanResolverService,
@@ -14,7 +18,44 @@ export class PlansService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    await this.ensureDefaultFreePlans();
     await this.resolver.refreshCache();
+  }
+
+  /** Create free plans if missing — does not overwrite existing free/paid plans. */
+  async ensureDefaultFreePlans(): Promise<void> {
+    for (const def of DEFAULT_FREE_PLANS) {
+      const existing = await this.repo.findBySlug(def.slug, def.audience);
+      if (existing) continue;
+      await this.repo.create({
+        slug: def.slug,
+        name: def.name,
+        description: def.description,
+        audience: def.audience,
+        monthlyPrice: def.monthlyPrice,
+        yearlyPrice: def.yearlyPrice,
+        currency: def.currency,
+        yearlyDiscount: def.yearlyDiscount,
+        isActive: true,
+        sortOrder: def.sortOrder,
+        features: {
+          create: def.features.map((f) => ({
+            key: f.key,
+            value: f.value,
+            valueType: f.valueType,
+          })),
+        },
+      });
+      this.logger.log(`Created missing free plan for ${def.audience}`);
+    }
+  }
+
+  private async assertNotProtectedFree(id: string, action: string) {
+    const plan = await this.repo.findById(id);
+    if (plan?.slug === FREE_PLAN_SLUG) {
+      throwApi(400, 'free_plan_protected', `لا يمكن ${action} الباقة المجانية`);
+    }
+    return plan;
   }
 
   async getPlans(audience?: PlanAudience): Promise<{ plans: PlanApiResponse[] }> {
@@ -50,8 +91,15 @@ export class PlansService implements OnModuleInit {
       valueType: 'BOOLEAN' | 'NUMBER' | 'STRING' | 'JSON';
     }>;
   }) {
+    const slug = data.slug.trim().toLowerCase().replace(/\s+/g, '-');
+    if (slug === FREE_PLAN_SLUG) {
+      const existing = await this.repo.findBySlug(FREE_PLAN_SLUG, data.audience);
+      if (existing) {
+        throwApi(400, 'free_plan_exists', 'الباقة المجانية موجودة مسبقاً لهذا الجمهور');
+      }
+    }
     const plan = await this.repo.create({
-      slug: data.slug,
+      slug,
       name: data.name,
       description: data.description ?? '',
       audience: data.audience,
@@ -94,7 +142,16 @@ export class PlansService implements OnModuleInit {
       }>;
     },
   ) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throwApi(404, 'not_found', 'الباقة غير موجودة');
+
     const { features, ...planData } = data;
+    if (existing.slug === FREE_PLAN_SLUG) {
+      // Keep free plan free and always active
+      planData.monthlyPrice = 0;
+      planData.yearlyPrice = 0;
+      planData.isActive = true;
+    }
     await this.repo.update(id, planData);
     if (features) {
       await this.repo.replaceFeatures(id, features);
@@ -104,6 +161,7 @@ export class PlansService implements OnModuleInit {
   }
 
   async deactivatePlan(id: string) {
+    await this.assertNotProtectedFree(id, 'تعطيل');
     const result = await this.repo.update(id, { isActive: false });
     await this.resolver.refreshCache();
     return result;
@@ -137,6 +195,7 @@ export class PlansService implements OnModuleInit {
   }
 
   async deletePlanIfUnused(id: string) {
+    await this.assertNotProtectedFree(id, 'حذف');
     const count = await this.repo.countSubscriptions(id);
     if (count > 0) {
       throw new Error('Plan is in use by active subscriptions');

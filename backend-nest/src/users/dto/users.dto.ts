@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   MaxLength,
   MinLength,
   ValidateIf,
@@ -10,6 +11,7 @@ import {
 import { Transform } from 'class-transformer';
 import { SUPPORTED_COUNTRIES } from '../../lib/countries';
 import { IsOurUploadUrl } from '../validators/is-our-upload-url.validator';
+import { MEDIA_URL_OPTS } from '../../shared/lib/media-url';
 
 export class ListUsersQueryDto {
   @IsOptional()
@@ -45,12 +47,24 @@ export class UpdateUserDto {
   bio?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(30)
+  @Matches(/^[a-z0-9_]+$/, {
+    message: 'أحرف إنجليزية صغيرة وأرقام وشرطة سفلية فقط',
+  })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase().trim() : value,
+  )
+  username?: string;
+
+  @IsOptional()
+  @IsUrl(MEDIA_URL_OPTS)
   @IsOurUploadUrl()
   avatar?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl(MEDIA_URL_OPTS)
   @IsOurUploadUrl()
   coverImage?: string;
 

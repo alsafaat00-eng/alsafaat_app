@@ -97,7 +97,7 @@ export default function PlansPage() {
             >
               نسخ
             </Button>
-            {row.isActive ? (
+            {row.isActive && row.slug !== 'free' ? (
               <Button
                 variant="secondary"
                 size="sm"
@@ -109,6 +109,7 @@ export default function PlansPage() {
                 تعطيل
               </Button>
             ) : null}
+            {row.slug !== 'free' ? (
             <Button
               variant="danger"
               size="sm"
@@ -123,6 +124,7 @@ export default function PlansPage() {
             >
               حذف
             </Button>
+            ) : null}
           </div>
         )}
       />

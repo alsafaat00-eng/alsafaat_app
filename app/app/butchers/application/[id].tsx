@@ -223,8 +223,7 @@ export default function ButcherApplicationDetailScreen() {
         ) : null}
 
         <Section title="البيانات الأساسية">
-          <DetailRow label="الاسم بالعربية" value={application.nameAr ?? '—'} />
-          <DetailRow label="الاسم بالإنجليزية" value={application.nameEn ?? '—'} />
+          <DetailRow label="اسم المحل" value={application.nameAr ?? application.nameEn ?? '—'} />
           <DetailRow label="هاتف المحل" value={application.shopPhone ?? '—'} />
           <DetailRow label="السجل التجاري" value={application.commercialReg ?? '—'} />
         </Section>
@@ -250,10 +249,9 @@ export default function ButcherApplicationDetailScreen() {
           <DetailRow label="وقت الإغلاق" value={application.closeTime || '—'} />
         </Section>
 
-        {(application.bioAr || application.bioEn || application.specialties.length > 0) && (
+        {(application.bioAr || application.specialties.length > 0) && (
           <Section title="نبذة وتخصصات">
-            {application.bioAr ? <DetailRow label="نبذة عربية" value={application.bioAr} /> : null}
-            {application.bioEn ? <DetailRow label="نبذة إنجليزية" value={application.bioEn} /> : null}
+            {application.bioAr ? <DetailRow label="نبذة" value={application.bioAr} /> : null}
             {application.specialties.length > 0 ? (
               <DetailRow label="التخصصات" value={application.specialties.join(' · ')} />
             ) : null}

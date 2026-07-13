@@ -69,7 +69,7 @@ export function useButcher() {
               json.data.map((s: any) => ({
                 id: s.id,
                 butcherId: s.butcherId ?? s.butcher?.id ?? '',
-                butcherName: s.butcher?.nameEn ?? s.butcher?.nameAr ?? 'Butcher',
+                butcherName: s.butcher?.nameAr ?? s.butcher?.nameEn ?? 'ملحمة',
                 butcherNameAr: s.butcher?.nameAr ?? s.butcher?.nameEn ?? 'ملحمة',
                 butcherLogo: s.butcher?.logo ?? s.thumbnail ?? '',
                 isVerified: s.butcher?.subscriptionActive ?? false,
@@ -112,7 +112,7 @@ export function useButcher() {
               setSelectedProducts(b.products.map((p: any) => ({
                 id: p.id,
                 butcherId: p.butcherId,
-                name: p.nameEn,
+                name: p.nameAr || p.nameEn,
                 nameAr: p.nameAr,
                 category: p.category,
                 images: p.images || [],

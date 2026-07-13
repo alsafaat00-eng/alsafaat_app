@@ -17,6 +17,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { SUPPORTED_COUNTRIES } from '../../lib/countries';
+import { MEDIA_URL_OPTS } from '../../shared/lib/media-url';
 
 const LISTING_CATEGORIES = [
   'camels',
@@ -143,7 +144,7 @@ export class CreateListingDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(8)
-  @IsUrl({}, { each: true })
+  @IsUrl(MEDIA_URL_OPTS, { each: true })
   images!: string[];
 
   @IsOptional()
@@ -191,7 +192,7 @@ export class UpdateListingDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(8)
-  @IsUrl({}, { each: true })
+  @IsUrl(MEDIA_URL_OPTS, { each: true })
   images?: string[];
 
   @IsOptional()

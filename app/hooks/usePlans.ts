@@ -36,8 +36,15 @@ export function usePlans(audience: PlanAudience = 'USER') {
   }, [fetchPlans]);
 
   const getPlanBySlug = useCallback(
-    (slug: string) =>
-      plans.find((p) => p.slug === normalizeSlug(slug)) ?? plans[0] ?? EMPTY_PLAN,
+    (slug: string) => {
+      const normalized = normalizeSlug(slug);
+      const found = plans.find((p) => p.slug === normalized);
+      if (found) return found;
+      // Never fall back to a paid plan when looking up "free" (or any missing slug).
+      // That was showing free users the paid plan price/features with a "مجاني" label.
+      if (normalized === 'free') return EMPTY_PLAN;
+      return EMPTY_PLAN;
+    },
     [plans],
   );
 

@@ -214,7 +214,7 @@ export default function ListingDetailScreen() {
           <Text style={styles.descArabic}>{listing.arabicDescription}</Text>
 
           {/* Seller */}
-          <Text style={styles.section}>Seller · البائع</Text>
+          <Text style={styles.section}>البائع</Text>
           <Pressable
             style={styles.sellerCard}
             onPress={() => openUserProfile(router, listing.seller.id)}
@@ -222,12 +222,11 @@ export default function ListingDetailScreen() {
             <Image source={{ uri: listing.seller.avatar }} style={styles.sellerAvatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
               <View style={styles.sellerNameRow}>
-                <Text style={styles.sellerName}>{listing.seller.displayName}</Text>
+                <Text style={styles.sellerName}>{listing.seller.arabicName || listing.seller.displayName}</Text>
                 {listing.seller.verified ? (
                   <AppIcon name="shield-checkmark" size={16} color={colors.electricBright} />
                 ) : null}
               </View>
-              <Text style={styles.sellerArabic}>{listing.seller.arabicName}</Text>
               <View style={styles.sellerStats}>
                 <AppIcon name="star" size={12} color={colors.gold} />
                 <Text style={styles.sellerStat}>{listing.seller.rating}</Text>

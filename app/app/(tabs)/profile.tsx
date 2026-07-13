@@ -89,9 +89,11 @@ export default function ProfileScreen() {
 
     setUploadingCover(true);
     try {
-      const success = await updateMe({ coverImage: result.assets[0].uri });
-      if (!success) {
-        Alert.alert('خطأ', 'فشل حفظ صورة الغلاف');
+      const saveResult = await updateMe({ coverImage: result.assets[0].uri });
+      if (!saveResult.ok) {
+        Alert.alert('خطأ', saveResult.error || 'فشل حفظ صورة الغلاف');
+      } else if (saveResult.error) {
+        Alert.alert('تنبيه', saveResult.error);
       }
     } catch {
       Alert.alert('خطأ', 'فشل رفع صورة الغلاف');
@@ -170,12 +172,11 @@ export default function ProfileScreen() {
         <View style={styles.content}>
           <View style={styles.info}>
             <View style={styles.nameRow}>
-              <Text style={styles.displayName}>{me.arabicName}</Text>
+              <Text style={styles.displayName}>{me.arabicName || me.displayName}</Text>
               {me.verified && (
                 <AppIcon name="checkmark-circle" size={20} color={colors.electricBright} />
               )}
             </View>
-            <Text style={styles.englishName}>{me.displayName}</Text>
             <Text style={styles.handle}>@{me.username}</Text>
             {me.bio ? <Text style={styles.bio}>{me.bio}</Text> : null}
             <View style={styles.locationRow}>

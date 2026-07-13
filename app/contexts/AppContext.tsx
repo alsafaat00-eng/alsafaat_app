@@ -5,8 +5,12 @@ import { createContext, ReactNode, useState, useEffect, useCallback } from 'reac
 import { User, Post, Listing } from '@/services/types';
 import { useAuth } from './AuthContext';
 import { API_BASE } from '@/services/api';
+import { parseApiError } from '@/services/apiError';
 import { authFetch } from '@/services/authFetch';
+import { needsUpload } from '@/services/mediaUri';
 import { uploadImageFromUri } from '@/services/upload';
+
+export type ActionResult = { ok: boolean; error?: string };
 
 const DEFAULT_USER: User = {
   id: '',
@@ -25,13 +29,13 @@ const DEFAULT_USER: User = {
 
 interface AppContextValue {
   me: User;
-  updateMe: (updates: Partial<User>) => Promise<boolean>;
+  updateMe: (updates: Partial<User>) => Promise<ActionResult>;
   posts: Post[];
   addPost: (post: Omit<Post, 'id' | 'author' | 'likes' | 'reposts' | 'comments' | 'postedAt' | 'liked' | 'reposted'>) => Promise<boolean>;
   updatePost: (postId: string, data: { content: string; arabicContent: string; image?: string | null }) => Promise<boolean>;
   deletePost: (postId: string) => Promise<boolean>;
   listings: Listing[];
-  addListing: (listingData: any) => Promise<boolean>;
+  addListing: (listingData: any) => Promise<ActionResult>;
   likedPosts: Set<string>;
   repostedPosts: Set<string>;
   toggleLike: (postId: string) => Promise<void>;
@@ -178,45 +182,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refetchData();
   }, [refetchData, isAuthenticated, accessToken]);
 
-  const updateMe = async (updates: Partial<User>): Promise<boolean> => {
-    if (!isAuthenticated || !accessToken || !user) return false;
+  const updateMe = async (updates: Partial<User>): Promise<ActionResult> => {
+    if (!isAuthenticated || !accessToken || !user) {
+      return { ok: false, error: 'يجب تسجيل الدخول أولاً' };
+    }
     try {
       let avatar = updates.avatar;
       let coverImage = updates.coverImage;
+      let uploadWarning: string | undefined;
 
-      const isLocalUri = (uri?: string) =>
-        !!uri && (uri.startsWith('file://') || uri.startsWith('content://'));
-
-      if (isLocalUri(avatar)) {
-        avatar = await uploadImageFromUri(accessToken, avatar!, 'avatars');
+      if (needsUpload(avatar)) {
+        try {
+          avatar = await uploadImageFromUri(accessToken, avatar, 'avatars');
+        } catch (err) {
+          uploadWarning =
+            err instanceof Error ? err.message : 'تعذّر رفع صورة الملف الشخصي';
+          avatar = undefined;
+        }
       }
-      if (isLocalUri(coverImage)) {
-        coverImage = await uploadImageFromUri(accessToken, coverImage!, 'avatars');
+      if (needsUpload(coverImage)) {
+        try {
+          coverImage = await uploadImageFromUri(accessToken, coverImage, 'avatars');
+        } catch (err) {
+          uploadWarning =
+            err instanceof Error ? err.message : 'تعذّر رفع صورة الغلاف';
+          coverImage = undefined;
+        }
+      }
+
+      const body: Record<string, unknown> = {};
+      if (updates.displayName !== undefined) body.displayName = updates.displayName;
+      if (updates.arabicName !== undefined) body.arabicName = updates.arabicName;
+      if (updates.username !== undefined) body.username = updates.username;
+      if (updates.bio !== undefined) body.bio = updates.bio;
+      if (updates.country !== undefined) body.country = updates.country;
+      if (avatar !== undefined) body.avatar = avatar;
+      if (coverImage !== undefined) body.coverImage = coverImage;
+
+      if (Object.keys(body).length === 0) {
+        return {
+          ok: false,
+          error: uploadWarning || 'لا توجد تغييرات للحفظ',
+        };
       }
 
       const res = await authFetch(`${API_BASE}/api/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          displayName: updates.displayName,
-          arabicName: updates.arabicName,
-          bio: updates.bio,
-          avatar,
-          coverImage,
-          country: updates.country,
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
           setMe(mapBackendUser(json.data));
-          return true;
+          return uploadWarning ? { ok: true, error: uploadWarning } : { ok: true };
         }
       }
+      return { ok: false, error: uploadWarning ?? (await parseApiError(res)) };
     } catch (err) {
       console.warn('[AppContext] Update user profile failed:', err);
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'فشل حفظ التغييرات',
+      };
     }
-    return false;
   };
 
   const addPost = async (postData: Omit<Post, 'id' | 'author' | 'likes' | 'reposts' | 'comments' | 'postedAt' | 'liked'>): Promise<boolean> => {
@@ -240,8 +269,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const addListing = async (listingData: any): Promise<boolean> => {
-    if (!isAuthenticated || !accessToken) return false;
+  const addListing = async (listingData: any): Promise<ActionResult> => {
+    if (!isAuthenticated || !accessToken) {
+      return { ok: false, error: 'يجب تسجيل الدخول أولاً' };
+    }
     try {
       const res = await authFetch(`${API_BASE}/api/listings`, {
         method: 'POST',
@@ -252,13 +283,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const json = await res.json();
         if (json.success && json.data) {
           setListingsState((prev) => [mapBackendListing(json.data), ...prev]);
-          return true;
+          return { ok: true };
         }
       }
+      return { ok: false, error: await parseApiError(res) };
     } catch (err) {
       console.warn('[AppContext] Add listing failed:', err);
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'فشل نشر الإعلان',
+      };
     }
-    return false;
   };
 
   const removeListing = async (listingId: string): Promise<boolean> => {

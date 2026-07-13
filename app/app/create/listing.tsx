@@ -73,7 +73,6 @@ export default function CreateListingScreen() {
   const [step, setStep] = useState(0);
   const [category, setCategory] = useState<Category | null>(null);
   const [titleAr, setTitleAr] = useState('');
-  const [titleEn, setTitleEn] = useState('');
   const [descAr, setDescAr] = useState('');
   const [breed, setBreed] = useState('');
   const [age, setAge] = useState('');
@@ -194,9 +193,10 @@ export default function CreateListingScreen() {
         return;
       }
 
-      const success = await addListing({
-        title: titleEn.trim() || titleAr.trim(),
-        arabicTitle: titleAr.trim(),
+      const title = titleAr.trim();
+      const result = await addListing({
+        title,
+        arabicTitle: title,
         description: descAr.trim(),
         arabicDescription: descAr.trim(),
         price: Number(price),
@@ -212,13 +212,17 @@ export default function CreateListingScreen() {
         featured,
       });
 
-      if (success) {
+      if (result.ok) {
         Alert.alert('تم النشر! 🎉', 'تم نشر إعلانك بنجاح في السوق.', [
           { text: 'عرض السوق', onPress: () => router.replace('/(tabs)/market') },
           { text: 'حسابي', onPress: () => router.replace('/(tabs)/profile') },
         ]);
       } else {
-        Alert.alert('خطأ', 'فشل نشر الإعلان. يرجى التحقق من المدخلات أو باقة الاشتراك الخاصة بك.');
+        Alert.alert(
+          'خطأ',
+          result.error ||
+            'فشل نشر الإعلان. يرجى التحقق من المدخلات أو باقة الاشتراك الخاصة بك.',
+        );
       }
     } catch (err: any) {
       Alert.alert('خطأ', err?.message || 'فشل نشر الإعلان.');
@@ -313,7 +317,7 @@ export default function CreateListingScreen() {
               <Text style={styles.stepTitle}>تفاصيل الإعلان</Text>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>العنوان بالعربية *</Text>
+                <Text style={styles.fieldLabel}>عنوان الإعلان *</Text>
                 <View style={styles.inputWrap}>
                   <TextInput
                     value={titleAr}
@@ -321,20 +325,6 @@ export default function CreateListingScreen() {
                     placeholder="مثال: ناقة نجدية أصيلة..."
                     placeholderTextColor={colors.textMuted}
                     style={[styles.input, { textAlign: 'right' }]}
-                    maxLength={80}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>العنوان بالإنجليزية</Text>
-                <View style={styles.inputWrap}>
-                  <TextInput
-                    value={titleEn}
-                    onChangeText={setTitleEn}
-                    placeholder="مثال: ناقة نجدية مميزة..."
-                    placeholderTextColor={colors.textMuted}
-                    style={styles.input}
                     maxLength={80}
                   />
                 </View>

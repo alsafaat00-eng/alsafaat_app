@@ -169,7 +169,7 @@ export function mapButcherFromApi(b: Record<string, unknown>): ButcherProfile {
 
   return {
     id: String(b.id ?? ''),
-    name: String(b.nameEn || b.nameAr || ''),
+    name: String(b.nameAr || b.nameEn || ''),
     nameAr: String(b.nameAr || ''),
     logo: (b.logo as string | undefined) || undefined,
     cover: (b.cover as string | undefined) || undefined,

@@ -110,9 +110,7 @@ export default function EditButcherScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [nameAr, setNameAr] = useState('');
-  const [nameEn, setNameEn] = useState('');
   const [bioAr, setBioAr] = useState('');
-  const [bioEn, setBioEn] = useState('');
   const [phone, setPhone] = useState('');
   const country = SAUDI_COUNTRY;
   const [city, setCity] = useState('');
@@ -152,9 +150,7 @@ export default function EditButcherScreen() {
       const b = json.data;
       const c = SAUDI_COUNTRY;
       setNameAr(b.nameAr ?? '');
-      setNameEn(b.nameEn ?? '');
       setBioAr(b.bioAr ?? '');
-      setBioEn(b.bioEn ?? '');
       setPhone(stripLocalPhone(b.phone ?? '', c));
       setCity(b.cityAr ?? b.city ?? '');
       setAddress(b.addressAr ?? b.address ?? '');
@@ -212,8 +208,8 @@ export default function EditButcherScreen() {
 
   const handleSave = async () => {
     if (!accessToken) return;
-    if (!nameAr.trim() || !nameEn.trim()) {
-      Alert.alert('خطأ', 'اسم الملحمة بالعربي والإنجليزي مطلوب');
+    if (!nameAr.trim()) {
+      Alert.alert('خطأ', 'اسم الملحمة مطلوب');
       return;
     }
     if (!city.trim() || !address.trim()) {
@@ -244,9 +240,9 @@ export default function EditButcherScreen() {
 
       const payload: Record<string, unknown> = {
         nameAr: nameAr.trim(),
-        nameEn: nameEn.trim(),
+        nameEn: nameAr.trim(),
         bioAr: bioAr.trim() || null,
-        bioEn: bioEn.trim() || null,
+        bioEn: bioAr.trim() || null,
         phone: normalizedPhone,
         country,
         city: city.trim(),
@@ -395,10 +391,8 @@ export default function EditButcherScreen() {
           </View>
 
           <View style={styles.form}>
-            <Field styles={styles} colors={colors} label="اسم الملحمة بالعربي *" value={nameAr} onChange={setNameAr} placeholder="مثال: ملحمة الطازج" />
-            <Field styles={styles} colors={colors} label="اسم الملحمة بالإنجليزي *" value={nameEn} onChange={setNameEn} placeholder="Al-Tazej Butcher" rtl={false} />
-            <Field styles={styles} colors={colors} label="نبذة بالعربي" value={bioAr} onChange={setBioAr} placeholder="وصف مختصر عن ملحمتك..." multiline />
-            <Field styles={styles} colors={colors} label="نبذة بالإنجليزي" value={bioEn} onChange={setBioEn} placeholder="Short bio in English..." multiline rtl={false} />
+            <Field styles={styles} colors={colors} label="اسم الملحمة *" value={nameAr} onChange={setNameAr} placeholder="مثال: ملحمة الطازج" />
+            <Field styles={styles} colors={colors} label="نبذة" value={bioAr} onChange={setBioAr} placeholder="وصف مختصر عن ملحمتك..." multiline />
 
             <Text style={styles.fieldLabel}>البلد</Text>
             <View style={styles.countryFixed}>

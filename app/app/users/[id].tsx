@@ -159,12 +159,11 @@ export default function UserProfileScreen() {
         <View style={styles.content}>
           <View style={styles.info}>
             <View style={styles.nameRow}>
-              <Text style={styles.displayName}>{profile.arabicName}</Text>
+              <Text style={styles.displayName}>{profile.arabicName || profile.displayName}</Text>
               {profile.verified && (
                 <AppIcon name="checkmark-circle" size={20} color={colors.electricBright} />
               )}
             </View>
-            <Text style={styles.englishName}>{profile.displayName}</Text>
             <Text style={styles.handle}>@{profile.username}</Text>
             {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
             <View style={styles.locationRow}>

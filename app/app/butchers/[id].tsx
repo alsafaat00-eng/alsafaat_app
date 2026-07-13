@@ -443,7 +443,7 @@ export default function ButcherProfileScreen() {
             const b = json.data;
             const mappedButcher: ButcherProfile = {
               id: b.id,
-              name: b.nameEn,
+              name: b.nameAr || b.nameEn,
               nameAr: b.nameAr,
               logo: b.logo || undefined,
               cover: b.cover || undefined,
@@ -465,7 +465,7 @@ export default function ButcherProfileScreen() {
                 isOpen: b.isOpen ?? true,
                 closedOn: b.closedDays || [],
               },
-              bio: b.bioEn || '',
+              bio: b.bioAr || b.bioEn || '',
               bioAr: b.bioAr || '',
               specialties: b.specialties || [],
               subscriptionActive: b.subscriptionActive ?? false,
@@ -481,7 +481,7 @@ export default function ButcherProfileScreen() {
               setProducts(b.products.map((p: any) => ({
                 id: p.id,
                 butcherId: p.butcherId,
-                name: p.nameEn,
+                name: p.nameAr || p.nameEn,
                 nameAr: p.nameAr,
                 category: p.category,
                 images: p.images || [],
@@ -503,7 +503,7 @@ export default function ButcherProfileScreen() {
               setOffers(b.offers.map((o: any) => ({
                 id: o.id,
                 butcherId: o.butcherId,
-                title: o.titleEn,
+                title: o.titleAr || o.titleEn,
                 titleAr: o.titleAr,
                 description: o.descriptionEn,
                 descriptionAr: o.descriptionAr,

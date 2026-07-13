@@ -10,6 +10,7 @@ import {
 } from '../../lib/subscription-lifecycle';
 import { throwApi } from '../../common/exceptions/api.exception';
 import { SubscriptionLifecycleRepository } from '../repositories/subscription-lifecycle.repository';
+import { SubscriptionsRepository } from '../repositories/subscriptions.repository';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -18,6 +19,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export class SubscriptionEntitlementService {
   constructor(
     private readonly repo: SubscriptionLifecycleRepository,
+    private readonly subscriptionsRepo: SubscriptionsRepository,
     private readonly lifecycle: SubscriptionLifecycleService,
     private readonly permissions: PlanPermissionService,
     private readonly planResolver: PlanResolverService,
@@ -73,6 +75,10 @@ export class SubscriptionEntitlementService {
     params: { images: string[]; featured: boolean; pinned?: boolean },
   ): Promise<string> {
     let row = await this.repo.findByUserId(userId);
+    if (!row) {
+      await this.subscriptionsRepo.upsertFree(userId);
+      row = await this.repo.findByUserId(userId);
+    }
     if (!row) throwApi(404, 'ref_not_found', 'الاشتراك غير موجود');
 
     await this.lifecycle.expireIfNeeded(row);

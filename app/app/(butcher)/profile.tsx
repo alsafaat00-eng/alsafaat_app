@@ -166,12 +166,11 @@ export default function ButcherProfileScreen() {
           {/* Main Info */}
           <View style={styles.info}>
             <View style={styles.nameRow}>
-              <Text style={styles.displayName}>{butcher.nameAr}</Text>
+              <Text style={styles.displayName}>{butcher.nameAr || butcher.nameEn}</Text>
               {butcher.type === 'verified' && (
                 <AppIcon name="checkmark-circle" size={20} color={colors.electricBright} />
               )}
             </View>
-            <Text style={styles.englishName}>{butcher.nameEn}</Text>
             <Text style={styles.handle}>سجل تجاري: {butcher.commercialReg || 'مفعل بموجب وثيقة'}</Text>
             <Text style={styles.bio}>{butcher.bioAr}</Text>
             <View style={styles.locationRow}>

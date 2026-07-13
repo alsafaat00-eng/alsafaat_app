@@ -239,7 +239,7 @@ export default function ButchersMapScreen() {
           if (json.success && json.data?.butchers) {
             const mapped = json.data.butchers.map((b: any) => ({
               id: b.id,
-              name: b.nameEn,
+              name: b.nameAr || b.nameEn,
               nameAr: b.nameAr,
               logo: b.logo || undefined,
               cover: b.cover || undefined,
@@ -261,7 +261,7 @@ export default function ButchersMapScreen() {
                 isOpen: b.isOpen ?? true,
                 closedOn: b.closedDays || [],
               },
-              bio: b.bioEn || '',
+              bio: b.bioAr || b.bioEn || '',
               bioAr: b.bioAr || '',
               specialties: b.specialties || [],
               subscriptionActive: b.subscriptionActive ?? false,

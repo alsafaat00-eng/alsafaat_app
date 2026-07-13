@@ -372,11 +372,13 @@ function CurrentPlanCard({ plan, subscription, styles }: CurrentPlanCardProps) {
         <View style={styles.currentPlanInfo}>
           <Text style={styles.currentPlanLabel}>باقتك الحالية</Text>
           <Text style={styles.currentPlanName}>
-            {planDisplayName(subscription.planSlug, plan.name)}
+            {planDisplayName(plan.slug, plan.name)}
           </Text>
           <Text style={styles.currentPlanDesc}>{plan.description}</Text>
           <Text style={styles.currentPlanPrice}>
-            {plan.monthlyPrice === 0 ? 'مجاني' : `${plan.monthlyPrice} ريال / شهر`}
+            {subscription.planSlug === 'free' || plan.monthlyPrice === 0
+              ? 'مجاني'
+              : `${plan.monthlyPrice} ريال / شهر`}
           </Text>
           {subscription.planSlug !== 'free' ? (
             <Text style={styles.currentPlanRenew}>

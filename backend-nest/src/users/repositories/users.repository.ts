@@ -82,9 +82,21 @@ export class UsersRepository {
     });
   }
 
+  findByUsername(username: string, excludeUserId?: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        username: { equals: username, mode: 'insensitive' },
+        isActive: true,
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      },
+      select: { id: true },
+    });
+  }
+
   updateUser(
     id: string,
     data: {
+      username?: string;
       displayName?: string;
       arabicName?: string;
       bio?: string;
@@ -111,7 +123,7 @@ export class UsersRepository {
           select: { rating: true, reviewCount: true },
         },
         _count: {
-          select: { followers: true },
+          select: { followers: true, following: true },
         },
       },
     });
