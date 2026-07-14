@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { LoggerService } from '../../common/services/logger.service';
-import { throwApi } from '../../common/exceptions/api.exception';
 
 export type SummarizeInput = {
   title: string;
@@ -49,14 +48,33 @@ export class AISummarizerService {
     return this.client !== null;
   }
 
+  /** Local fallback so Knowledge Center can still auto-publish without OpenAI. */
+  private fallbackSummarize(input: SummarizeInput): SummarizeResult {
+    const snippet = (input.content || input.title).trim().replace(/\s+/g, ' ');
+    const summaryBody =
+      snippet.length > 450 ? `${snippet.slice(0, 447)}...` : snippet || input.title;
+    const summary = [
+      summaryBody,
+      '',
+      '🔗 المصدر:',
+      input.sourceUrl,
+    ].join('\n');
+
+    this.logger.info(
+      { sourceUrl: input.sourceUrl },
+      'AI summarize: using local fallback (OPENAI_API_KEY missing or failed)',
+    );
+
+    return {
+      titleAr: input.title.trim() || 'خبر من مركز المعرفة',
+      summary,
+    };
+  }
+
   async summarize(input: SummarizeInput): Promise<SummarizeResult> {
     const client = this.client;
     if (!client) {
-      throwApi(
-        503,
-        'openai_not_configured',
-        'مفتاح OpenAI غير مضبوط في البيئة',
-      );
+      return this.fallbackSummarize(input);
     }
 
     try {
@@ -95,8 +113,8 @@ export class AISummarizerService {
 
       return { titleAr, summary };
     } catch (err) {
-      this.logger.error({ err, sourceUrl: input.sourceUrl }, 'AI summarize failed');
-      throw err;
+      this.logger.error({ err, sourceUrl: input.sourceUrl }, 'AI summarize failed — using fallback');
+      return this.fallbackSummarize(input);
     }
   }
 }

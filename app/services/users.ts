@@ -11,6 +11,9 @@ export type PublicUserProfile = {
   bio?: string;
   verified: boolean;
   country?: string;
+  role?: string;
+  /** Derived: USER | BUTCHER | LIVESTOCK_TRADER */
+  accountType?: 'USER' | 'BUTCHER' | 'LIVESTOCK_TRADER';
   rating: number | null;
   reviewCount: number;
   followersCount: number;

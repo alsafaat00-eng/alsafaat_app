@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { gradients, radius, spacing, typography, type ThemeColors } from '@/constants/theme';
+import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useTheme } from '@/hooks/useTheme';
 import { rtlBackIcon } from '@/lib/rtl';
@@ -33,6 +33,7 @@ import { uploadMediaFromUri } from '@/services/upload';
 import { useEffect } from 'react';
 import { useApp } from '@/hooks/useApp';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchUserProfile } from '@/services/users';
 
 function mapApiMessage(m: {
   id: string;
@@ -56,13 +57,42 @@ function mapApiMessage(m: {
   };
 }
 
-const QUICK_REPLIES = [
+const QUICK_REPLIES_BUTCHER = [
   'هل متوفر الخروف الكامل؟',
   'ما هو السعر لكيلو الضأن؟',
   'متى تفتحون غداً؟',
   'هل تتوفر لحوم طازجة اليوم؟',
   'أريد طلب ذبيحة كاملة',
 ];
+
+const QUICK_REPLIES_LIVESTOCK = [
+  'هل الحيوان ما زال متاحاً؟',
+  'ما هو السعر النهائي؟',
+  'هل يمكن المعاينة قبل الشراء؟',
+  'أين موقع الاستلام؟',
+  'هل تقبل التفاوض على السعر؟',
+];
+
+type PeerAccountType = 'USER' | 'BUTCHER' | 'LIVESTOCK_TRADER';
+type ChatUiKind = 'direct' | 'butcher' | 'livestock';
+
+function resolveChatUiKind(params: {
+  threadType?: string;
+  butcherId?: string | null;
+  accountType?: string;
+}): ChatUiKind {
+  if (
+    params.threadType === 'BUTCHER' ||
+    params.butcherId ||
+    params.accountType === 'BUTCHER'
+  ) {
+    return 'butcher';
+  }
+  if (params.accountType === 'LIVESTOCK_TRADER') {
+    return 'livestock';
+  }
+  return 'direct';
+}
 
 export default function ButcherChatScreen() {
   const {
@@ -72,6 +102,7 @@ export default function ButcherChatScreen() {
     receiverName,
     receiverAvatar,
     threadType: threadTypeParam,
+    accountType: accountTypeParam,
   } = useLocalSearchParams<{
     butcherId?: string;
     threadId?: string;
@@ -79,6 +110,7 @@ export default function ButcherChatScreen() {
     receiverName?: string;
     receiverAvatar?: string;
     threadType?: string;
+    accountType?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -105,6 +137,13 @@ export default function ButcherChatScreen() {
   const [resolvedButcherId, setResolvedButcherId] = useState<string | null>(
     butcherId ?? null,
   );
+  const [peerAccountType, setPeerAccountType] = useState<PeerAccountType | null>(
+    accountTypeParam === 'BUTCHER' ||
+      accountTypeParam === 'LIVESTOCK_TRADER' ||
+      accountTypeParam === 'USER'
+      ? accountTypeParam
+      : null,
+  );
   const [sending, setSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
@@ -112,6 +151,17 @@ export default function ButcherChatScreen() {
   const effectiveButcherId = butcherId || resolvedButcherId;
   const activeChatType: 'DIRECT' | 'BUTCHER' =
     threadTypeParam === 'BUTCHER' || Boolean(effectiveButcherId) ? 'BUTCHER' : 'DIRECT';
+  const chatUiKind = resolveChatUiKind({
+    threadType: threadTypeParam,
+    butcherId: effectiveButcherId,
+    accountType: peerAccountType ?? accountTypeParam,
+  });
+  const quickReplies =
+    chatUiKind === 'butcher'
+      ? QUICK_REPLIES_BUTCHER
+      : chatUiKind === 'livestock'
+        ? QUICK_REPLIES_LIVESTOCK
+        : [];
   const headerName =
     isThreadMode || isDirectMode || isButcherPeerMode
       ? (receiverName || 'محادثة')
@@ -127,6 +177,39 @@ export default function ButcherChatScreen() {
       router.back();
     }
   }, [isThreadMode, butcherId, isDirectMode, isButcherPeerMode, router]);
+
+  // Resolve peer account type for role-based chat UI (user / butcher / livestock trader)
+  useEffect(() => {
+    if (threadTypeParam === 'BUTCHER' || butcherId) {
+      setPeerAccountType('BUTCHER');
+      return;
+    }
+    if (
+      accountTypeParam === 'BUTCHER' ||
+      accountTypeParam === 'LIVESTOCK_TRADER' ||
+      accountTypeParam === 'USER'
+    ) {
+      setPeerAccountType(accountTypeParam);
+      if (accountTypeParam !== 'USER') return;
+    }
+    if (!receiverId || activeChatType === 'BUTCHER') return;
+
+    let cancelled = false;
+    fetchUserProfile(receiverId).then((profile) => {
+      if (cancelled || !profile) return;
+      const next =
+        profile.accountType ??
+        (profile.role === 'BUTCHER'
+          ? 'BUTCHER'
+          : profile.listingsCount > 0
+            ? 'LIVESTOCK_TRADER'
+            : 'USER');
+      setPeerAccountType(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [receiverId, threadTypeParam, butcherId, accountTypeParam, activeChatType]);
 
   useEffect(() => {
     if (isThreadMode || isDirectMode || isButcherPeerMode) return;
@@ -499,33 +582,50 @@ export default function ButcherChatScreen() {
                 <View style={[
                   styles.onlineDot,
                   {
-                    backgroundColor: butcher?.workingHours?.isOpen
-                      ? colors.success
-                      : colors.textSubtle,
+                    backgroundColor:
+                      chatUiKind === 'butcher'
+                        ? butcher?.workingHours?.isOpen
+                          ? colors.success
+                          : colors.textSubtle
+                        : colors.success,
                   },
                 ]} />
                 <Text style={styles.onlineText}>
-                  {isThreadMode || isDirectMode
-                    ? 'محادثة مباشرة'
-                    : butcher?.workingHours?.isOpen
+                  {chatUiKind === 'butcher'
+                    ? butcher?.workingHours?.isOpen
                       ? 'متاح الآن'
-                      : 'غير متاح'}
+                      : 'غير متاح'
+                    : chatUiKind === 'livestock'
+                      ? 'تاجر مواشي'
+                      : 'محادثة مباشرة'}
                 </Text>
               </View>
             </View>
           </UserProfileLink>
-          <Pressable style={styles.callBtn}>
-            <AppIcon name="call-outline" size={20} color={colors.electricBright} />
-          </Pressable>
+          {chatUiKind === 'butcher' ? (
+            <Pressable style={styles.callBtn}>
+              <AppIcon name="call-outline" size={20} color={colors.electricBright} />
+            </Pressable>
+          ) : (
+            <View style={styles.callBtnPlaceholder} />
+          )}
         </View>
 
-        {/* Order summary strip (if applicable) */}
-        <View style={styles.orderStrip}>
-          <AppIcon name="clipboard-list-outline" size={16} color={colors.glow} />
-          <Text style={styles.orderStripText}>
-            يمكنك مناقشة تفاصيل طلبك وتأكيده هنا مباشرةً مع الجزار
-          </Text>
-        </View>
+        {chatUiKind === 'butcher' ? (
+          <View style={styles.orderStrip}>
+            <AppIcon name="clipboard-list-outline" size={16} color={colors.glow} />
+            <Text style={styles.orderStripText}>
+              يمكنك مناقشة تفاصيل طلبك وتأكيده هنا مباشرةً مع الجزار
+            </Text>
+          </View>
+        ) : chatUiKind === 'livestock' ? (
+          <View style={styles.orderStrip}>
+            <AppIcon name="pricetag-outline" size={16} color={colors.glow} />
+            <Text style={styles.orderStripText}>
+              يمكنك التواصل مباشرة حول تفاصيل البيع والشراء والاستلام
+            </Text>
+          </View>
+        ) : null}
 
         {/* Messages */}
         <FlatList
@@ -538,24 +638,25 @@ export default function ButcherChatScreen() {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* Quick replies */}
-        <View style={styles.quickRepliesWrap}>
-          <FlatList
-            horizontal
-            data={QUICK_REPLIES}
-            keyExtractor={(item) => item}
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => sendMessage(item)}
-                style={styles.quickReply}
-              >
-                <Text style={styles.quickReplyText}>{item}</Text>
-              </Pressable>
-            )}
-            contentContainerStyle={styles.quickRepliesRow}
-            showsHorizontalScrollIndicator={false}
-          />
-        </View>
+        {quickReplies.length > 0 ? (
+          <View style={styles.quickRepliesWrap}>
+            <FlatList
+              horizontal
+              data={quickReplies}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => sendMessage(item)}
+                  style={styles.quickReply}
+                >
+                  <Text style={styles.quickReplyText}>{item}</Text>
+                </Pressable>
+              )}
+              contentContainerStyle={styles.quickRepliesRow}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
+        ) : null}
 
         {/* Input bar */}
         <View
@@ -648,6 +749,9 @@ function createStyles(colors: ThemeColors) {
     backgroundColor: colors.bgGlass,
     borderWidth: 1, borderColor: colors.borderSoft,
     alignItems: 'center', justifyContent: 'center',
+  },
+  callBtnPlaceholder: {
+    width: 38, height: 38,
   },
 
   orderStrip: {

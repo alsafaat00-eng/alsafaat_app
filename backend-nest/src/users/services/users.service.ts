@@ -47,12 +47,16 @@ export class UsersService {
   async getUser(id: string, viewer?: JwtPayload) {
     if (!id) throwApi(400, 'invalid_id', 'معرّف غير صالح');
 
-    const cacheKey = `user:${id}`;
-    const cached = await this.redis.cacheGet<Record<string, unknown>>(cacheKey);
-    if (cached) return cached;
-
-    const user = await this.repo.findUserProfile(id);
-    if (!user) throwApi(404, 'not_found', 'المستخدم غير موجود');
+    // Cache shared profile fields only — never cache viewer-specific isFollowing
+    // Key versioned so stale entries that baked in isFollowing are ignored
+    const cacheKey = `user:${id}:base`;
+    let base = await this.redis.cacheGet<Record<string, unknown>>(cacheKey);
+    if (!base) {
+      const user = await this.repo.findUserProfile(id);
+      if (!user) throwApi(404, 'not_found', 'المستخدم غير موجود');
+      base = this.formatProfile(user);
+      await this.redis.cacheSet(cacheKey, base, PROFILE_CACHE_TTL);
+    }
 
     let isFollowing = false;
     if (viewer?.userId && viewer.userId !== id) {
@@ -60,9 +64,7 @@ export class UsersService {
       isFollowing = !!follow;
     }
 
-    const result = this.formatProfile(user, isFollowing);
-    await this.redis.cacheSet(cacheKey, result, PROFILE_CACHE_TTL);
-    return result;
+    return { ...base, isFollowing };
   }
 
   async updateUser(id: string, user: JwtPayload, dto: UpdateUserDto) {
@@ -84,7 +86,7 @@ export class UsersService {
         ...(fcmToken !== undefined ? { fcmToken } : {}),
       });
 
-      await this.redis.cacheDel(`user:${id}`);
+      await this.redis.cacheDel(`user:${id}`, `user:${id}:base`);
       this.logger.info({ userId: id }, 'User profile updated');
 
       const reviewCount = updated.butcherProfile?.reviewCount ?? 0;
@@ -119,7 +121,7 @@ export class UsersService {
 
     await this.repo.deactivateUser(id);
     await this.socketDisconnect.disconnectUser(id);
-    await this.redis.cacheDel(`user:${id}`);
+    await this.redis.cacheDel(`user:${id}`, `user:${id}:base`);
     this.logger.info(
       { userId: id, by: user.userId },
       'User account deactivated',
@@ -141,7 +143,7 @@ export class UsersService {
     const existing = await this.repo.findFollow(followerId, targetId);
     if (existing) {
       await this.repo.deleteFollow(followerId, targetId);
-      await this.redis.cacheDel(`user:${targetId}`);
+      await this.redis.cacheDel(`user:${targetId}`, `user:${targetId}:base`);
       this.logger.info({ followerId, targetId }, 'User unfollowed');
       return { following: false };
     }
@@ -161,7 +163,7 @@ export class UsersService {
       data: { actorId: followerId, actorAvatar: follower?.avatar },
     });
 
-    await this.redis.cacheDel(`user:${targetId}`);
+    await this.redis.cacheDel(`user:${targetId}`, `user:${targetId}:base`);
     this.logger.info({ followerId, targetId }, 'User followed');
     return { following: true };
   }
@@ -208,7 +210,13 @@ export class UsersService {
     };
   }
 
-  private formatProfile(user: ProfileUser, isFollowing: boolean) {
+  private resolveAccountType(user: ProfileUser): 'USER' | 'BUTCHER' | 'LIVESTOCK_TRADER' {
+    if (user.role === 'BUTCHER' || user.butcherProfile) return 'BUTCHER';
+    if (user._count.listings > 0) return 'LIVESTOCK_TRADER';
+    return 'USER';
+  }
+
+  private formatProfile(user: ProfileUser) {
     const reviewCount = user.butcherProfile?.reviewCount ?? 0;
     return {
       id: user.id,
@@ -220,6 +228,8 @@ export class UsersService {
       bio: user.bio,
       verified: user.verified,
       country: user.country,
+      role: user.role,
+      accountType: this.resolveAccountType(user),
       createdAt: user.createdAt,
       lastSeenAt: user.lastSeenAt,
       rating: reviewCount > 0 ? user.butcherProfile!.rating : null,
@@ -228,7 +238,6 @@ export class UsersService {
       followingCount: user._count.following,
       listingsCount: user._count.listings,
       postsCount: user._count.posts,
-      isFollowing,
     };
   }
 }

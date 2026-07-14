@@ -37,12 +37,15 @@ import {
 } from '@/lib/butcherApplicationLabels';
 import {
   issuesByField,
+  normalizeCommercialReg,
+  normalizeShopPhone,
   validateSubmitInput,
   validateSubmitReady,
   validateWizardStep1,
   validateWizardStep2,
   validateWizardStep3,
 } from '@/lib/butcherApplicationValidation';
+import { hasValidCoords } from '@/lib/butcherLocation';
 import { hasValidCoords } from '@/lib/butcherLocation';
 import { rtlBackIcon, rtlRow } from '@/lib/rtl';
 import type {
@@ -130,8 +133,8 @@ function step1Snapshot(form: WizardForm): ApplicationSnapshotInput {
   return {
     nameAr: name,
     nameEn: name,
-    shopPhone: form.shopPhone.trim(),
-    commercialReg: form.commercialReg.trim(),
+    shopPhone: normalizeShopPhone(form.shopPhone),
+    commercialReg: normalizeCommercialReg(form.commercialReg),
     country: 'SA',
     city,
     cityAr: city,
@@ -141,10 +144,18 @@ function step1Snapshot(form: WizardForm): ApplicationSnapshotInput {
 }
 
 function step2Snapshot(form: WizardForm): ApplicationSnapshotInput {
-  return {
-    lat: Number(form.lat),
-    lng: Number(form.lng),
-  };
+  const latRaw = form.lat.trim();
+  const lngRaw = form.lng.trim();
+  const snapshot: ApplicationSnapshotInput = {};
+  if (latRaw !== '') {
+    const lat = Number(latRaw);
+    snapshot.lat = Number.isFinite(lat) ? lat : Number.NaN;
+  }
+  if (lngRaw !== '') {
+    const lng = Number(lngRaw);
+    snapshot.lng = Number.isFinite(lng) ? lng : Number.NaN;
+  }
+  return snapshot;
 }
 
 function step3Snapshot(form: WizardForm): ApplicationSnapshotInput {
@@ -351,22 +362,56 @@ export default function ButcherApplicationEditScreen() {
   }, [navigation, saveCurrentStep]);
 
   const goNext = async () => {
-    const validation = validateStep(step, form);
+    // Normalize phone / commercial reg so common Saudi input formats pass validation
+    const phone = normalizeShopPhone(form.shopPhone);
+    const commercialReg = normalizeCommercialReg(form.commercialReg);
+    let working = form;
+    if (phone !== form.shopPhone || commercialReg !== form.commercialReg) {
+      working = { ...form, shopPhone: phone, commercialReg };
+      setForm(working);
+      formRef.current = working;
+      setDirty(true);
+      dirtyRef.current = true;
+    }
+
+    const validation = validateStep(step, working);
     if (!validation.valid) {
       setFieldErrors(issuesByField(validation.issues));
+      Alert.alert(
+        'أكمل البيانات',
+        validation.issues[0]?.message ?? 'يرجى تعبئة الحقول المطلوبة قبل المتابعة',
+      );
       return;
     }
+
     try {
-      if (step !== 3) {
-        await saveCurrentStep();
-      } else if (applicationId) {
-        const refreshed = await get(applicationId);
-        setApplication(refreshed);
+      // Skip network save when nothing changed — allows advancing if API is slow/down
+      // after a previous successful save. Always save when there are local edits.
+      if (step !== 3 && (dirtyRef.current || dirty)) {
+        const saved = await saveCurrentStep();
+        if (!saved) {
+          throw new Error('تعذّر حفظ المسودة');
+        }
+      } else if (step === 3 && applicationId) {
+        try {
+          const refreshed = await get(applicationId);
+          setApplication(refreshed);
+        } catch {
+          // Keep local draft state so the user can still reach review
+        }
       }
       setStep((s) => Math.min(s + 1, 4));
       setFieldErrors({});
-    } catch {
-      // hook.error
+      setSubmitError(null);
+    } catch (err) {
+      const apiErr = toApiError(err);
+      const message =
+        apiErr?.messageAr ||
+        (err instanceof Error ? err.message : null) ||
+        error ||
+        'تعذّر حفظ البيانات. تحقق من الاتصال ثم حاول مجدداً.';
+      setSubmitError(message);
+      Alert.alert('تعذّر المتابعة', message);
     }
   };
 
@@ -496,14 +541,23 @@ export default function ButcherApplicationEditScreen() {
           label="هاتف المحل *"
           value={form.shopPhone}
           onChangeText={(v) => patchForm({ shopPhone: v })}
+          onBlur={() => {
+            const next = normalizeShopPhone(form.shopPhone);
+            if (next !== form.shopPhone) patchForm({ shopPhone: next });
+          }}
           keyboardType="phone-pad"
           ltr
+          hint="مثال: 05XXXXXXXX أو +9665XXXXXXXX"
           error={fieldErrors.shopPhone}
         />
         <AppTextInput
           label="رقم السجل التجاري *"
           value={form.commercialReg}
           onChangeText={(v) => patchForm({ commercialReg: v })}
+          onBlur={() => {
+            const next = normalizeCommercialReg(form.commercialReg);
+            if (next !== form.commercialReg) patchForm({ commercialReg: next });
+          }}
           ltr
           error={fieldErrors.commercialReg}
         />
@@ -710,6 +764,9 @@ export default function ButcherApplicationEditScreen() {
             { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.lg },
           ]}
         >
+          {submitError || error ? (
+            <Text style={s.inlineError}>{submitError || error}</Text>
+          ) : null}
           {step < 4 ? (
             <PrimaryButton
               title={step === 3 ? 'متابعة للمراجعة' : 'التالي'}

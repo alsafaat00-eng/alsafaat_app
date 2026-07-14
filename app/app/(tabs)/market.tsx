@@ -59,8 +59,6 @@ export default function MarketScreen() {
     return true;
   });
 
-  const featured = filtered.filter((l) => l.featured);
-
   return (
     <SafeAreaView style={[styles.container, rtlDirection]} edges={['top']}>
       {/* Search */}
@@ -112,29 +110,7 @@ export default function MarketScreen() {
         {/* Country filter */}
         <CountryChips value={activeCountry} onChange={setActiveCountry} />
 
-        {/* Featured */}
-        {featured.length > 0 && !showFeaturedOnly && (
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>⭐ الإعلانات المميزة</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[styles.featuredRow, rtlDirection]}
-            >
-              {featured.map((l) => (
-                <View key={l.id} style={styles.featuredItem}>
-                  <ListingCard
-                    listing={l}
-                    variant="feature"
-                    onPress={() => router.push({ pathname: '/listing/[id]', params: { id: l.id } })}
-                  />
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* All listings grid */}
+        {/* قائمة إعلانات تحت بعض — أسلوب حراج */}
         <View style={styles.sectionWrap}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
@@ -142,15 +118,14 @@ export default function MarketScreen() {
             </Text>
             <Text style={styles.count}>{filtered.length} إعلان</Text>
           </View>
-          <View style={styles.grid}>
+          <View style={styles.feed}>
             {filtered.map((l) => (
-              <View key={l.id} style={styles.gridItem}>
-                <ListingCard
-                  listing={l}
-                  variant="grid"
-                  onPress={() => router.push({ pathname: '/listing/[id]', params: { id: l.id } })}
-                />
-              </View>
+              <ListingCard
+                key={l.id}
+                listing={l}
+                variant="grid"
+                onPress={() => router.push({ pathname: '/listing/[id]', params: { id: l.id } })}
+              />
             ))}
           </View>
           {filtered.length === 0 && (
@@ -217,23 +192,19 @@ function createMarketStyles(colors: ThemeColors) {
   catIcon: { fontSize: 14 },
   catLabel: { ...typography.caption, color: colors.textMuted },
   catLabelActive: { color: colors.textBrandStrong },
-  sectionWrap: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
+  sectionWrap: { paddingHorizontal: spacing.md, marginTop: spacing.md },
   sectionHeader: {
     ...rtlRow,
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   count: { ...typography.caption, color: colors.textMuted },
-  featuredRow: { gap: spacing.md, paddingBottom: spacing.sm },
-  featuredItem: { width: 280 },
-  grid: {
-    ...rtlRow,
-    flexWrap: 'wrap',
+  feed: {
     gap: spacing.md,
   },
-  gridItem: { width: '47%' },
   empty: { alignItems: 'center', paddingVertical: spacing.xxxl, gap: spacing.md },
   emptyIcon: { fontSize: 40 },
   emptyText: { ...typography.body, color: colors.textMuted },

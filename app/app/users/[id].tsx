@@ -90,6 +90,11 @@ export default function UserProfileScreen() {
         receiverId: profile.id,
         receiverName: profile.arabicName,
         receiverAvatar: profile.avatar ?? '',
+        accountType: profile.accountType ?? 'USER',
+        threadType:
+          profile.accountType === 'BUTCHER' || profile.role === 'BUTCHER'
+            ? 'BUTCHER'
+            : 'DIRECT',
       },
     } as any);
   };

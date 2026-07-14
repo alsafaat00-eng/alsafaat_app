@@ -132,6 +132,7 @@ export function MessagesPanel({ variant = 'standalone', showHeader = true }: Mes
           ? chat.butcher?.logo || p.avatar || ''
           : p.avatar ?? '',
         threadType: chat.type,
+        accountType: isButcher ? 'BUTCHER' : 'USER',
         ...(chat.butcherId ? { butcherId: chat.butcherId } : {}),
       },
     } as any);

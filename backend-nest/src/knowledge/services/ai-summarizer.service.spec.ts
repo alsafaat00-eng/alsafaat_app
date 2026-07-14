@@ -1,6 +1,5 @@
 import { AISummarizerService } from './ai-summarizer.service';
 import { LoggerService } from '../../common/services/logger.service';
-import { ApiException } from '../../common/exceptions/api.exception';
 
 describe('AISummarizerService', () => {
   const logger = {
@@ -14,17 +13,18 @@ describe('AISummarizerService', () => {
     process.env.OPENAI_API_KEY = originalKey;
   });
 
-  it('throws when OpenAI is not configured', async () => {
+  it('uses local fallback when OpenAI is not configured', async () => {
     delete process.env.OPENAI_API_KEY;
     const service = new AISummarizerService(logger);
     expect(service.isConfigured()).toBe(false);
-    await expect(
-      service.summarize({
-        title: 't',
-        content: 'c',
-        sourceName: 's',
-        sourceUrl: 'https://example.com',
-      }),
-    ).rejects.toBeInstanceOf(ApiException);
+    const result = await service.summarize({
+      title: 'عنوان الخبر',
+      content: 'محتوى الخبر عن الثروة الحيوانية',
+      sourceName: 'مصدر',
+      sourceUrl: 'https://example.com/news/1',
+    });
+    expect(result.titleAr).toBe('عنوان الخبر');
+    expect(result.summary).toContain('https://example.com/news/1');
+    expect(result.summary).toContain('محتوى الخبر');
   });
 });

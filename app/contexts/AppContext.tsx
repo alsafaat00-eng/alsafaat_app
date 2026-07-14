@@ -31,6 +31,7 @@ interface AppContextValue {
   me: User;
   updateMe: (updates: Partial<User>) => Promise<ActionResult>;
   posts: Post[];
+  fetchPosts: (feed?: 'for_you' | 'following') => Promise<void>;
   addPost: (post: Omit<Post, 'id' | 'author' | 'likes' | 'reposts' | 'comments' | 'postedAt' | 'liked' | 'reposted'>) => Promise<boolean>;
   updatePost: (postId: string, data: { content: string; arabicContent: string; image?: string | null }) => Promise<boolean>;
   deletePost: (postId: string) => Promise<ActionResult>;
@@ -178,12 +179,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, [user]);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (feed: 'for_you' | 'following' = 'for_you') => {
     try {
+      const qs = feed === 'following' ? '?feed=following' : '';
       const headers: HeadersInit = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
       const res = await (accessToken
-        ? authFetch(`${API_BASE}/api/posts`, { headers })
-        : fetch(`${API_BASE}/api/posts`, { headers }));
+        ? authFetch(`${API_BASE}/api/posts${qs}`, { headers })
+        : fetch(`${API_BASE}/api/posts${qs}`, { headers }));
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data?.posts) {
@@ -520,6 +522,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         me,
         updateMe,
         posts,
+        fetchPosts,
         addPost,
         updatePost,
         deletePost,

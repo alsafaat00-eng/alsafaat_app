@@ -66,6 +66,16 @@ export class PostsRepository {
     });
   }
 
+  /** IDs of users that `userId` is following. */
+  async findFollowingIds(userId: string): Promise<string[]> {
+    const rows = await this.prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+      take: 2000,
+    });
+    return rows.map((r) => r.followingId);
+  }
+
   findById(id: string) {
     return this.prisma.post.findFirst({
       where: { id, ...notDeleted },

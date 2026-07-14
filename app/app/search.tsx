@@ -241,15 +241,14 @@ export default function SearchScreen() {
           {(filter === 'all' || filter === 'listings') && filteredListings.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>الإعلانات ({filteredListings.length})</Text>
-              <View style={styles.listingsGrid}>
+              <View style={styles.listingsFeed}>
                 {filteredListings.slice(0, 6).map((l) => (
-                  <View key={l.id} style={styles.listingItem}>
-                    <ListingCard
-                      listing={l}
-                      variant="grid"
-                      onPress={() => router.push({ pathname: '/listing/[id]', params: { id: l.id } })}
-                    />
-                  </View>
+                  <ListingCard
+                    key={l.id}
+                    listing={l}
+                    variant="grid"
+                    onPress={() => router.push({ pathname: '/listing/[id]', params: { id: l.id } })}
+                  />
                 ))}
               </View>
             </View>
@@ -377,8 +376,7 @@ function createStyles(colors: ThemeColors) {
   userName: { ...typography.bodyStrong, color: colors.textPrimary },
   userHandle: { ...typography.caption, color: colors.textMuted },
   followersText: { ...typography.caption, color: colors.textSecondary },
-  listingsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  listingItem: { width: '47%' },
+  listingsFeed: { gap: spacing.md },
   liveRow: {
     flexDirection: 'row', gap: spacing.md,
     paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderSoft,

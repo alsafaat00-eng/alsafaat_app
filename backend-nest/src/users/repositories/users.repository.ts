@@ -27,10 +27,11 @@ const profileSelect = {
   bio: true,
   verified: true,
   country: true,
+  role: true,
   createdAt: true,
   lastSeenAt: true,
   butcherProfile: {
-    select: { rating: true, reviewCount: true },
+    select: { id: true, rating: true, reviewCount: true },
   },
   _count: {
     select: { followers: true, following: true, listings: true, posts: true },

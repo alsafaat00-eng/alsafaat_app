@@ -113,7 +113,15 @@ export function PostCommentsModal({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+          <View
+            style={[
+              styles.sheet,
+              {
+                paddingTop: Math.max(insets.top, spacing.sm),
+                paddingBottom: Math.max(insets.bottom, spacing.sm),
+              },
+            ]}
+          >
             <View style={styles.handle} />
             <View style={styles.header}>
               <Text style={styles.title}>التعليقات</Text>
@@ -131,7 +139,8 @@ export function PostCommentsModal({
                 style={styles.list}
                 contentContainerStyle={styles.listContent}
                 keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator
+                nestedScrollEnabled
               >
                 {comments.length === 0 ? (
                   <View style={styles.empty}>
@@ -190,8 +199,6 @@ export function PostCommentsModal({
   );
 }
 
-const SHEET_HEIGHT = '68%';
-
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
   root: {
@@ -204,9 +211,11 @@ function createStyles(colors: ThemeColors) {
   },
   sheetWrap: {
     width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
   },
   sheet: {
-    height: SHEET_HEIGHT,
+    height: '100%',
     backgroundColor: colors.bgDeep,
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
@@ -236,11 +245,13 @@ function createStyles(colors: ThemeColors) {
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: {
     flex: 1,
+    minHeight: 0,
   },
   listContent: {
     padding: spacing.lg,
     gap: spacing.md,
     flexGrow: 1,
+    paddingBottom: spacing.xl,
   },
   empty: {
     flex: 1,

@@ -182,6 +182,15 @@ export class KnowledgeCenterService implements OnModuleInit {
         meta: { sourceId: options?.sourceId ?? null },
       });
 
+      if (sources.length === 0) {
+        await this.repo.createSyncLog({
+          level: 'warn',
+          message:
+            'لا توجد مصادر مفعّلة لمركز المعرفة — أضف مصدراً RSS/API من لوحة التحكم',
+        });
+        this.logger.warn({}, 'Knowledge sync: no enabled sources');
+      }
+
       for (const source of sources) {
         try {
           const result = await this.syncSource(source.id);
@@ -200,6 +209,31 @@ export class KnowledgeCenterService implements OnModuleInit {
             sourceId: source.id,
             level: 'error',
             message: `فشل مزامنة المصدر ${source.name}: ${message}`,
+          });
+        }
+      }
+
+      // Retry PENDING articles that previously failed summarization (e.g. missing OpenAI key)
+      const autoPublish = process.env.KNOWLEDGE_AUTO_PUBLISH !== 'false';
+      const pending = await this.repo.findPendingWithoutSummary(20);
+      for (const article of pending) {
+        try {
+          await this.summarizeAndStore(article.id);
+          if (autoPublish) {
+            await this.publisher.publishArticle(article.id);
+            stats.published += 1;
+          }
+        } catch (err) {
+          stats.failed += 1;
+          const message = err instanceof Error ? err.message : String(err);
+          await this.repo.updateArticle(article.id, {
+            errorMessage: message.slice(0, 500),
+          });
+          await this.repo.createSyncLog({
+            sourceId: article.sourceId,
+            level: 'error',
+            message: `فشل إعادة تلخيص/نشر: ${article.originalTitle}`,
+            meta: { articleId: article.id, error: message },
           });
         }
       }

@@ -38,11 +38,18 @@ export class PostsService {
   }
 
   async getFeed(query: ListPostsQueryDto, user?: JwtPayload) {
-    const { cursor, userId: authorId } = query;
+    const { cursor, userId: authorId, feed } = query;
+    const followingOnly = feed === 'following';
+
+    if (followingOnly && !user?.userId) {
+      return { posts: [], nextCursor: null, hasMore: false };
+    }
 
     const cacheKey = authorId
       ? `posts:user:${authorId}:${cursor || 'first'}`
-      : `posts:feed:${cursor || 'first'}`;
+      : followingOnly
+        ? `posts:feed:following:${user!.userId}:${cursor || 'first'}`
+        : `posts:feed:${cursor || 'first'}`;
 
     const cached = await this.cache.get<{
       posts: unknown[];
@@ -51,9 +58,19 @@ export class PostsService {
     }>(cacheKey);
     if (cached) return cached;
 
-    const where: Prisma.PostWhereInput = authorId
+    let where: Prisma.PostWhereInput = authorId
       ? { authorId, ...notDeleted, isHidden: false }
       : { ...notDeleted, isHidden: false };
+
+    if (followingOnly && user?.userId) {
+      const followingIds = await this.repo.findFollowingIds(user.userId);
+      const authorIds = [...followingIds, user.userId];
+      where = {
+        ...where,
+        authorId: { in: authorIds },
+      };
+    }
+
     const posts = await this.repo.findFeed({
       where,
       take: PAGE_SIZE + 1,
@@ -81,7 +98,8 @@ export class PostsService {
     );
 
     const result = { posts: postsWithMeta, nextCursor, hasMore };
-    await this.cache.set(cacheKey, result, 60);
+    // Following feed is viewer-specific — short TTL
+    await this.cache.set(cacheKey, result, followingOnly ? 30 : 60);
     return result;
   }
 
@@ -105,6 +123,7 @@ export class PostsService {
     }
 
     await this.cache.del('posts:feed:first');
+    await this.cache.delPattern('posts:feed:following:*').catch(() => 0);
     return post;
   }
 

@@ -114,6 +114,8 @@ export default function ListingDetailScreen() {
         receiverId: listing.seller.id,
         receiverName: listing.seller.arabicName,
         receiverAvatar: listing.seller.avatar ?? '',
+        accountType: 'LIVESTOCK_TRADER',
+        threadType: 'DIRECT',
       },
     } as any);
   };

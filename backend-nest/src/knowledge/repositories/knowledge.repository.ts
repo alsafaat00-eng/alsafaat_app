@@ -127,6 +127,18 @@ export class KnowledgeRepository {
     });
   }
 
+  findPendingWithoutSummary(take = 20) {
+    return this.prisma.knowledgeArticle.findMany({
+      where: {
+        status: 'PENDING',
+        OR: [{ summary: null }, { titleAr: null }],
+      },
+      orderBy: { createdAt: 'asc' },
+      take,
+      include: { source: true },
+    });
+  }
+
   async listArticles(params: {
     status?: KnowledgeArticleStatus;
     sourceId?: string;

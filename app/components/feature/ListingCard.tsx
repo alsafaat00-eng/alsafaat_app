@@ -6,7 +6,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, imageCardOverlay, imageCardOverlayStrong, radius, spacing, typography, type ThemeColors } from '@/constants/theme';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useTheme } from '@/hooks/useTheme';
-import { inlineEnd, inlineStart, rtlDirection, rtlRow } from '@/lib/rtl';
+import { formatRelativeTimeAr } from '@/lib/formatRelativeTime';
+import { inlineStart, rtlDirection, rtlRow } from '@/lib/rtl';
 import { Listing, countries } from '@/services/types';
 import { UserProfileLink } from '@/components/feature/UserProfileLink';
 
@@ -33,6 +34,11 @@ function listingImageUri(listing: Listing): string | undefined {
   return first && first.trim().length > 0 ? first : undefined;
 }
 
+function listingTimeLabel(listing: Listing): string {
+  if (listing.createdAt) return formatRelativeTimeAr(listing.createdAt);
+  return listing.postedAt || '';
+}
+
 export function ListingCard({ listing, onPress, variant = 'grid', compact = false }: ListingCardProps) {
   const country = countries[listing.country];
   const thumbUri = listingImageUri(listing);
@@ -40,6 +46,8 @@ export function ListingCard({ listing, onPress, variant = 'grid', compact = fals
   const styles = useThemedStyles(({ colors }) => createStyles(colors));
   const cardOverlay = imageCardOverlay(scheme);
   const cardOverlayStrong = imageCardOverlayStrong(scheme);
+  const desc = listing.arabicDescription || listing.description;
+  const timeLabel = listingTimeLabel(listing);
 
   if (variant === 'profile') {
     return (
@@ -115,45 +123,70 @@ export function ListingCard({ listing, onPress, variant = 'grid', compact = fals
     );
   }
 
+  // تغذية مثل حراج: بطاقات بعرض كامل تحت بعض
+  // عنوان → مدينة/وقت → بائع → وصف → صورة أسفل
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.card, rtlDirection, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.harajCard, rtlDirection, pressed && styles.pressed]}
     >
-      <View style={styles.imgWrap}>
-        {thumbUri ? (
-          <Image source={{ uri: thumbUri }} style={styles.img} contentFit="cover" transition={250} />
-        ) : (
-          <View style={styles.imgPlaceholder}>
-            <Text style={styles.imgPlaceholderIcon}>{CATEGORY_ICONS[listing.category] || '📦'}</Text>
-          </View>
-        )}
-        {listing.featured ? (
-          <View style={[styles.miniFeatured, inlineStart(8), { top: 8 }]}>
-            <AppIcon name="star" size={10} color="#1A1300" />
-          </View>
-        ) : null}
-        <View style={[styles.flagPill, inlineEnd(8), { top: 8 }]}>
-          <Text style={styles.flag}>{country.flag}</Text>
+      <Text style={styles.harajTitle} numberOfLines={2}>
+        {listing.arabicTitle || listing.title}
+      </Text>
+
+      <View style={[styles.harajMeta, rtlRow]}>
+        <View style={[styles.harajMetaItem, rtlRow]}>
+          <AppIcon name="map-marker-outline" size={13} color={colors.textMuted} />
+          <Text style={styles.harajMetaText}>
+            {listing.arabicLocation || listing.location}
+          </Text>
+        </View>
+        <View style={[styles.harajMetaItem, rtlRow]}>
+          <AppIcon name="time-outline" size={13} color={colors.textMuted} />
+          <Text style={styles.harajMetaText}>{timeLabel || 'الآن'}</Text>
         </View>
       </View>
-      <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={2}>{listing.arabicTitle}</Text>
-        <View style={[styles.metaRow, rtlRow]}>
-          <AppIcon name="map-marker-outline" size={12} color={colors.textMuted} />
-          <Text style={styles.meta}>{listing.arabicLocation}</Text>
-        </View>
-        <View style={[styles.priceRow, rtlRow]}>
-          <Text style={styles.price}>{listing.price.toLocaleString('ar-SA')}</Text>
-          <Text style={styles.currency}>{listing.currency}</Text>
-        </View>
-        <UserProfileLink userId={listing.seller.id} style={[styles.sellerRow, rtlRow]}>
-          <Image source={uriSource(listing.seller.avatar)} style={styles.sellerAvatar} />
-          <Text style={styles.sellerName} numberOfLines={1}>{listing.seller.arabicName}</Text>
+
+      <View style={[styles.harajSellerRow, rtlRow]}>
+        <UserProfileLink userId={listing.seller.id} style={[styles.harajSellerInfo, rtlRow]}>
+          <Image source={uriSource(listing.seller.avatar)} style={styles.harajAvatar} />
+          <Text style={styles.harajSellerName} numberOfLines={1}>
+            {listing.seller.arabicName || listing.seller.displayName || listing.seller.username}
+          </Text>
           {listing.seller.verified ? (
-            <AppIcon name="shield-checkmark" size={12} color={colors.electricBright} />
+            <AppIcon name="shield-checkmark" size={13} color={colors.electricBright} />
           ) : null}
         </UserProfileLink>
+        {listing.featured ? (
+          <View style={[styles.harajFeatured, rtlRow]}>
+            <AppIcon name="star" size={10} color="#1A1300" />
+            <Text style={styles.harajFeaturedText}>مميز</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {desc ? (
+        <Text style={styles.harajDesc} numberOfLines={8}>
+          {desc}
+        </Text>
+      ) : null}
+
+      {listing.price > 0 ? (
+        <Text style={styles.harajPrice}>
+          {listing.price.toLocaleString('ar-SA')} {listing.currency}
+        </Text>
+      ) : null}
+
+      <View style={styles.harajImgWrap}>
+        {thumbUri ? (
+          <Image source={{ uri: thumbUri }} style={styles.harajImg} contentFit="cover" transition={250} />
+        ) : (
+          <View style={styles.harajImgPlaceholder}>
+            <Text style={styles.harajImgPlaceholderIcon}>
+              {CATEGORY_ICONS[listing.category] || '📦'}
+            </Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -162,8 +195,7 @@ export function ListingCard({ listing, onPress, variant = 'grid', compact = fals
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
   pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.92,
   },
   profileCard: {
     borderRadius: radius.xl,
@@ -261,12 +293,6 @@ function createStyles(colors: ThemeColors) {
     ...typography.h3,
     marginBottom: 0,
   },
-  featureArabic: {
-    ...typography.caption,
-    color: colors.textBrand,
-    marginBottom: spacing.md,
-    textAlign: 'right',
-  },
   featurePrice: {
     ...typography.h3,
     color: colors.gold,
@@ -313,112 +339,119 @@ function createStyles(colors: ThemeColors) {
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  flag: {
+    fontSize: 14,
+  },
 
-  // Grid
-  card: {
-    flex: 1,
+  // بطاقة تغذية حراج — عرض كامل تحت بعض
+  harajCard: {
+    width: '100%',
     backgroundColor: colors.bgSurface,
     borderRadius: radius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.borderSoft,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
-  imgWrap: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    backgroundColor: colors.bgElevated,
+  harajTitle: {
+    ...typography.h3,
+    color: colors.cyan,
+    fontWeight: '700',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    lineHeight: 26,
   },
-  img: {
-    width: '100%',
-    height: '100%',
-  },
-  imgPlaceholder: {
-    width: '100%',
-    height: '100%',
+  harajMeta: {
+    ...rtlRow,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bgElevated,
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
-  imgPlaceholderIcon: { fontSize: 32 },
-  miniFeatured: {
-    position: 'absolute',
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.gold,
+  harajMetaItem: {
+    ...rtlRow,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flagPill: {
-    position: 'absolute',
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.bgOverlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-  },
-  flag: {
-    fontSize: 14,
-  },
-  body: {
-    padding: spacing.md,
     gap: 4,
   },
-  title: {
+  harajMetaText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    writingDirection: 'rtl',
+  },
+  harajSellerRow: {
+    ...rtlRow,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  harajSellerInfo: {
+    ...rtlRow,
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
+  },
+  harajAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.bgElevated,
+  },
+  harajSellerName: {
     ...typography.bodyStrong,
     color: colors.textPrimary,
-  },
-  arabic: {
-    ...typography.caption,
-    color: colors.textMuted,
+    flexShrink: 1,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
-  metaRow: {
+  harajFeatured: {
     ...rtlRow,
     alignItems: 'center',
     gap: 4,
-    marginTop: 2,
+    backgroundColor: colors.gold,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
   },
-  meta: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  priceRow: {
-    ...rtlRow,
-    alignItems: 'baseline',
-    gap: 4,
-    marginTop: 4,
-  },
-  price: {
-    ...typography.h3,
-    color: colors.gold,
-  },
-  currency: {
+  harajFeaturedText: {
     ...typography.micro,
-    color: colors.textMuted,
+    color: '#1A1300',
+    fontWeight: '700',
   },
-  sellerRow: {
-    ...rtlRow,
-    alignItems: 'center',
-    gap: 6,
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-  },
-  sellerAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-  },
-  sellerName: {
-    ...typography.caption,
+  harajDesc: {
+    ...typography.body,
     color: colors.textSecondary,
-    flex: 1,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    lineHeight: 24,
   },
+  harajPrice: {
+    ...typography.bodyStrong,
+    color: colors.gold,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  harajImgWrap: {
+    width: '100%',
+    aspectRatio: 16 / 10,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.bgElevated,
+    marginTop: spacing.xs,
+  },
+  harajImg: {
+    width: '100%',
+    height: '100%',
+  },
+  harajImgPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  harajImgPlaceholderIcon: { fontSize: 40 },
   });
 }
 

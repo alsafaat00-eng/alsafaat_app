@@ -15,6 +15,11 @@ export class ListPostsQueryDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  /** `for_you` (default) or `following` — X-style feed tabs */
+  @IsOptional()
+  @IsString()
+  feed?: 'for_you' | 'following';
 }
 
 export class CreatePostDto {

@@ -49,6 +49,47 @@ export const SHOP_PHONE_REGEX = /^\+?[0-9]{8,15}$/;
 export const COMMERCIAL_REG_REGEX = /^[A-Za-z0-9\-\/]+$/;
 export const GCC_COUNTRIES: readonly GccCountry[] = ['SA'];
 
+const ARABIC_INDIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+const EASTERN_ARABIC_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+
+/** Convert Arabic/Persian digits to Latin and strip common phone separators. */
+export function normalizeShopPhone(value: string): string {
+  let out = '';
+  for (const ch of value.trim()) {
+    const ar = ARABIC_INDIC_DIGITS.indexOf(ch);
+    if (ar >= 0) {
+      out += String(ar);
+      continue;
+    }
+    const fa = EASTERN_ARABIC_DIGITS.indexOf(ch);
+    if (fa >= 0) {
+      out += String(fa);
+      continue;
+    }
+    if (ch === '+' || (ch >= '0' && ch <= '9')) out += ch;
+  }
+  return out;
+}
+
+export function normalizeCommercialReg(value: string): string {
+  let out = '';
+  for (const ch of value.trim()) {
+    const ar = ARABIC_INDIC_DIGITS.indexOf(ch);
+    if (ar >= 0) {
+      out += String(ar);
+      continue;
+    }
+    const fa = EASTERN_ARABIC_DIGITS.indexOf(ch);
+    if (fa >= 0) {
+      out += String(fa);
+      continue;
+    }
+    if (ch === ' ' || ch === '\u00a0') continue;
+    out += ch;
+  }
+  return out;
+}
+
 export type ValidationIssue = {
   field: string;
   message: string;
@@ -343,7 +384,24 @@ export function validateWizardStep1(input: ApplicationSnapshotInput): Validation
 }
 
 export function validateWizardStep2(input: ApplicationSnapshotInput): ValidationResult {
-  return result(validateRequiredFields(WIZARD_STEP2_FIELDS, input));
+  const issues = validateRequiredFields(WIZARD_STEP2_FIELDS, input);
+  if (
+    typeof input.lat === 'number' &&
+    typeof input.lng === 'number' &&
+    !Number.isNaN(input.lat) &&
+    !Number.isNaN(input.lng) &&
+    input.lat === 0 &&
+    input.lng === 0
+  ) {
+    issues.push({ field: 'lat', message: 'يجب تحديد موقع المحل على الخريطة' });
+  }
+  if (typeof input.lat === 'number' && Number.isNaN(input.lat)) {
+    issues.push({ field: 'lat', message: 'خط العرض غير صالح' });
+  }
+  if (typeof input.lng === 'number' && Number.isNaN(input.lng)) {
+    issues.push({ field: 'lng', message: 'خط الطول غير صالح' });
+  }
+  return result(issues);
 }
 
 export function validateWizardStep3(input: ApplicationSnapshotInput): ValidationResult {
