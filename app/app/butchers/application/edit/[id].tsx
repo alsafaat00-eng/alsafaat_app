@@ -46,7 +46,6 @@ import {
   validateWizardStep3,
 } from '@/lib/butcherApplicationValidation';
 import { hasValidCoords } from '@/lib/butcherLocation';
-import { hasValidCoords } from '@/lib/butcherLocation';
 import { rtlBackIcon, rtlRow } from '@/lib/rtl';
 import type {
   ApplicationDetail,

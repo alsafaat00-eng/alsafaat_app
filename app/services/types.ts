@@ -78,6 +78,8 @@ export interface Listing {
   postedAt: string;
   /** ISO timestamp for relative time (Haraj-style: قبل ٢٤ دقيقة) */
   createdAt?: string;
+  /** View count from API when available */
+  views?: number;
 }
 
 export interface Post {

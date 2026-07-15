@@ -112,6 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       featured: l.featured ?? false,
       postedAt: new Date(l.createdAt).toLocaleDateString('ar-SA'),
       createdAt: l.createdAt,
+      views: typeof l.views === 'number' ? l.views : undefined,
     };
   }, [mapBackendUser]);
 

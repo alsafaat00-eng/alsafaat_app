@@ -14,7 +14,7 @@ import { UserProfileLink } from '@/components/feature/UserProfileLink';
 interface ListingCardProps {
   listing: Listing;
   onPress?: () => void;
-  variant?: 'grid' | 'feature' | 'profile';
+  variant?: 'grid' | 'feature' | 'profile' | 'list';
   compact?: boolean;
 }
 
@@ -29,14 +29,32 @@ const CATEGORY_ICONS: Record<Listing['category'], string> = {
   equipment: '⚙️',
 };
 
+const VIDEO_EXT = /\.(mp4|mov|webm|m4v)(\?|$)/i;
+const NEW_LISTING_MS = 24 * 60 * 60 * 1000;
+
 function listingImageUri(listing: Listing): string | undefined {
   const first = listing.images?.[0];
   return first && first.trim().length > 0 ? first : undefined;
 }
 
+function listingHasVideo(listing: Listing): boolean {
+  return (listing.images ?? []).some((uri) => VIDEO_EXT.test(uri));
+}
+
 function listingTimeLabel(listing: Listing): string {
   if (listing.createdAt) return formatRelativeTimeAr(listing.createdAt);
   return listing.postedAt || '';
+}
+
+function isNewListing(listing: Listing): boolean {
+  if (!listing.createdAt) return false;
+  const t = new Date(listing.createdAt).getTime();
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t < NEW_LISTING_MS;
+}
+
+function formatCount(n: number): string {
+  return n.toLocaleString('ar-SA');
 }
 
 export function ListingCard({ listing, onPress, variant = 'grid', compact = false }: ListingCardProps) {
@@ -48,6 +66,86 @@ export function ListingCard({ listing, onPress, variant = 'grid', compact = fals
   const cardOverlayStrong = imageCardOverlayStrong(scheme);
   const desc = listing.arabicDescription || listing.description;
   const timeLabel = listingTimeLabel(listing);
+  const title = listing.arabicTitle || listing.title;
+  const location = listing.arabicLocation || listing.location;
+  const sellerName =
+    listing.seller.arabicName || listing.seller.displayName || listing.seller.username;
+
+  if (variant === 'list') {
+    const showNew = isNewListing(listing);
+    const hasVideo = listingHasVideo(listing);
+    const views = listing.views ?? 0;
+
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.listRow, rtlDirection, pressed && styles.pressed]}
+      >
+        {/* المحتوى يمين (بداية RTL) ثم الصورة يسار */}
+        <View style={styles.listContent}>
+          <Text style={styles.listTitle} numberOfLines={1}>
+            {title}
+          </Text>
+
+          <View style={[styles.listMetaRow, rtlRow]}>
+            <View style={[styles.listMetaItem, rtlRow]}>
+              <AppIcon name="map-marker-outline" size={12} color={colors.textMuted} />
+              <Text style={styles.listMetaText} numberOfLines={1}>
+                {location}
+              </Text>
+            </View>
+            {listing.featured ? (
+              <Text style={styles.listStatusFeatured}>مميز</Text>
+            ) : showNew ? (
+              <Text style={styles.listStatusNew}>جديد</Text>
+            ) : null}
+          </View>
+
+          <View style={[styles.listBottomRow, rtlRow]}>
+            <UserProfileLink userId={listing.seller.id} style={[styles.listSeller, rtlRow]}>
+              <Image source={uriSource(listing.seller.avatar)} style={styles.listAvatar} />
+              <Text style={styles.listSellerName} numberOfLines={1}>
+                {sellerName}
+              </Text>
+              {listing.seller.verified ? (
+                <AppIcon name="shield-checkmark" size={12} color={colors.electricBright} />
+              ) : null}
+            </UserProfileLink>
+
+            <View style={[styles.listStats, rtlRow]}>
+              {timeLabel ? (
+                <View style={[styles.listMetaItem, rtlRow]}>
+                  <AppIcon name="time-outline" size={11} color={colors.textSubtle} />
+                  <Text style={styles.listStatText}>{timeLabel}</Text>
+                </View>
+              ) : null}
+              {views > 0 ? (
+                <View style={[styles.listMetaItem, rtlRow]}>
+                  <AppIcon name="eye" size={11} color={colors.textSubtle} />
+                  <Text style={styles.listStatText}>{formatCount(views)}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.listThumbWrap}>
+          {thumbUri ? (
+            <Image source={{ uri: thumbUri }} style={styles.listThumb} contentFit="cover" transition={200} />
+          ) : (
+            <View style={styles.listThumbPlaceholder}>
+              <Text style={styles.listThumbIcon}>{CATEGORY_ICONS[listing.category] || '📦'}</Text>
+            </View>
+          )}
+          {hasVideo ? (
+            <View style={styles.listVideoBadge}>
+              <AppIcon name="play" size={10} color="#fff" variant="sr" />
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+    );
+  }
 
   if (variant === 'profile') {
     return (
@@ -124,22 +222,19 @@ export function ListingCard({ listing, onPress, variant = 'grid', compact = fals
   }
 
   // تغذية مثل حراج: بطاقات بعرض كامل تحت بعض
-  // عنوان → مدينة/وقت → بائع → وصف → صورة أسفل
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.harajCard, rtlDirection, pressed && styles.pressed]}
     >
       <Text style={styles.harajTitle} numberOfLines={2}>
-        {listing.arabicTitle || listing.title}
+        {title}
       </Text>
 
       <View style={[styles.harajMeta, rtlRow]}>
         <View style={[styles.harajMetaItem, rtlRow]}>
           <AppIcon name="map-marker-outline" size={13} color={colors.textMuted} />
-          <Text style={styles.harajMetaText}>
-            {listing.arabicLocation || listing.location}
-          </Text>
+          <Text style={styles.harajMetaText}>{location}</Text>
         </View>
         <View style={[styles.harajMetaItem, rtlRow]}>
           <AppIcon name="time-outline" size={13} color={colors.textMuted} />
@@ -151,7 +246,7 @@ export function ListingCard({ listing, onPress, variant = 'grid', compact = fals
         <UserProfileLink userId={listing.seller.id} style={[styles.harajSellerInfo, rtlRow]}>
           <Image source={uriSource(listing.seller.avatar)} style={styles.harajAvatar} />
           <Text style={styles.harajSellerName} numberOfLines={1}>
-            {listing.seller.arabicName || listing.seller.displayName || listing.seller.username}
+            {sellerName}
           </Text>
           {listing.seller.verified ? (
             <AppIcon name="shield-checkmark" size={13} color={colors.electricBright} />
@@ -197,6 +292,132 @@ function createStyles(colors: ThemeColors) {
   pressed: {
     opacity: 0.92,
   },
+
+  // قائمة السوق المضغوطة — صف وليس بطاقة
+  listRow: {
+    ...rtlRow,
+    alignItems: 'center',
+    minHeight: 100,
+    maxHeight: 110,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+    backgroundColor: colors.bgDeep,
+  },
+  listContent: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    gap: 5,
+  },
+  listTitle: {
+    ...typography.bodyStrong,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.cyan,
+    fontWeight: '700',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  listMetaRow: {
+    ...rtlRow,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  listMetaItem: {
+    ...rtlRow,
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 1,
+  },
+  listMetaText: {
+    ...typography.caption,
+    fontSize: 12,
+    color: colors.textSecondary,
+    writingDirection: 'rtl',
+    flexShrink: 1,
+  },
+  listStatusNew: {
+    ...typography.micro,
+    color: colors.cyan,
+    fontWeight: '700',
+  },
+  listStatusFeatured: {
+    ...typography.micro,
+    color: colors.gold,
+    fontWeight: '700',
+  },
+  listBottomRow: {
+    ...rtlRow,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  listSeller: {
+    ...rtlRow,
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+  },
+  listAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.bgElevated,
+  },
+  listSellerName: {
+    ...typography.caption,
+    fontSize: 12,
+    color: colors.textPrimary,
+    flexShrink: 1,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  listStats: {
+    ...rtlRow,
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 0,
+  },
+  listStatText: {
+    ...typography.micro,
+    fontSize: 11,
+    color: colors.textSubtle,
+    writingDirection: 'rtl',
+  },
+  listThumbWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.bgElevated,
+    flexShrink: 0,
+  },
+  listThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  listThumbPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listThumbIcon: { fontSize: 28 },
+  listVideoBadge: {
+    position: 'absolute',
+    top: 6,
+    start: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   profileCard: {
     borderRadius: radius.xl,
     overflow: 'hidden',
@@ -343,7 +564,6 @@ function createStyles(colors: ThemeColors) {
     fontSize: 14,
   },
 
-  // بطاقة تغذية حراج — عرض كامل تحت بعض
   harajCard: {
     width: '100%',
     backgroundColor: colors.bgSurface,
