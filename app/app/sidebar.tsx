@@ -166,6 +166,12 @@ export default function SidebarScreen() {
             onPress={() => handleNav('/notifications')}
           />
           <SidebarMenuRow
+            item={{ key: 'messages', icon: 'comment', label: 'الرسائل' }}
+            colors={colors}
+            showDivider
+            onPress={() => handleNav('/(tabs)/messages')}
+          />
+          <SidebarMenuRow
             item={{ key: 'subscription', icon: 'crown-outline', label: 'الاشتراك والرسوم' }}
             colors={colors}
             showDivider={false}

@@ -129,13 +129,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="messages"
+        name="live"
         options={{
           href: null,
         }}
       />
       <Tabs.Screen
-        name="live"
+        name="messages"
         options={{
           href: null,
         }}
