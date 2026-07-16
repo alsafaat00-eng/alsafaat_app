@@ -43,6 +43,7 @@ model User {
   followers                           Follow[]                          @relation("Following")
   listings                            Listing[]
   fees                                ListingFee[]
+  listingBoosts                       ListingBoost[]
   liveStreams                         LiveStream[]
   receivedMessages                    Message[]                         @relation("ReceivedMessages")
   sentMessages                        Message[]                         @relation("SentMessages")
@@ -205,6 +206,9 @@ model Listing {
   country           Country
   images            String[]
   featured          Boolean         @default(false)
+  pinned            Boolean         @default(false)
+  featuredUntil     DateTime?
+  pinnedUntil       DateTime?
   status            ListingStatus   @default(active)
   views             Int             @default(0)
   expiresAt         DateTime?
@@ -213,6 +217,7 @@ model Listing {
   deletedAt         DateTime?
   seller            User            @relation(fields: [sellerId], references: [id])
   fee               ListingFee?
+  boosts            ListingBoost[]
   offers            ListingOffer[]
   stories           Story[]
 
@@ -221,9 +226,35 @@ model Listing {
   @@index([country])
   @@index([status])
   @@index([featured])
+  @@index([pinned])
   @@index([createdAt])
   @@index([status, createdAt])
   @@index([deletedAt])
+}
+
+model ListingBoost {
+  id            String     @id @default(uuid())
+  listingId     String
+  userId        String
+  boostType     BoostType
+  durationDays  Int        @default(30)
+  amount        Float
+  currency      String     @default("SAR")
+  status        FeeStatus  @default(pending)
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  transactionId String?
+  paidAt        DateTime?
+  paymentId     String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  listing       Listing    @relation(fields: [listingId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@index([listingId])
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
 }
 
 model ListingFee {
@@ -888,6 +919,13 @@ enum PaymentReferenceType {
   fee
   listing_fee
   butcher_order
+  featured_ad
+  pinned_ad
+}
+
+enum BoostType {
+  featured
+  pinned
 }
 
 enum OrderPaymentStatus {

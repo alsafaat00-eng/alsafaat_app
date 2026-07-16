@@ -20,7 +20,7 @@ import { AppIcon } from '@/components/ui/FlaticonIcon';
 import { Image } from '@/components/ui/AppImage';
 import { LinearGradient } from '@/components/ui/AppLinearGradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -36,6 +36,81 @@ export default function ListingDetailScreen() {
   const [loading, setLoading] = useState(!cached);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+
+  // ─── Boost state ──────────────────────────────────────────────────────────
+  const [boostModalVisible, setBoostModalVisible] = useState(false);
+  const [boostType, setBoostType] = useState<'featured' | 'pinned'>('featured');
+  const [boostDuration, setBoostDuration] = useState(30);
+  const [boostMethod, setBoostMethod] = useState<'mada' | 'visa' | 'mastercard' | 'apple_pay' | 'stc_pay'>('mada');
+  const [boostProcessing, setBoostProcessing] = useState(false);
+
+  const BOOST_PLANS = {
+    featured: [
+      { durationDays: 7,  amount: 25,  labelAr: '٧ أيام'  },
+      { durationDays: 30, amount: 75,  labelAr: '٣٠ يوماً' },
+      { durationDays: 60, amount: 130, labelAr: '٦٠ يوماً' },
+    ],
+    pinned: [
+      { durationDays: 3,  amount: 15,  labelAr: '٣ أيام'   },
+      { durationDays: 7,  amount: 30,  labelAr: '٧ أيام'   },
+      { durationDays: 30, amount: 80,  labelAr: '٣٠ يوماً' },
+    ],
+  } as const;
+
+  const PAYMENT_METHODS_BOOST = [
+    { id: 'mada' as const,       icon: '💳', labelAr: 'مدى'       },
+    { id: 'visa' as const,       icon: '💳', labelAr: 'فيزا'      },
+    { id: 'mastercard' as const, icon: '💳', labelAr: 'ماستركارد' },
+    { id: 'apple_pay' as const,  icon: '🍎', labelAr: 'Apple Pay' },
+    { id: 'stc_pay' as const,    icon: '📱', labelAr: 'STC Pay'  },
+  ];
+
+  const selectedBoostPlan = BOOST_PLANS[boostType].find((p) => p.durationDays === boostDuration)
+    ?? BOOST_PLANS[boostType][1];
+
+  const handleBoostPay = async () => {
+    if (!listing) return;
+    setBoostProcessing(true);
+    try {
+      const res = await authFetch(`${API_BASE}/api/listings/${listing.id}/boost`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boostType, durationDays: boostDuration, method: boostMethod }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success || !json.data) {
+        Alert.alert('فشل', json.messageAr ?? json.message ?? 'تعذّر إطلاق خدمة الترقية');
+        return;
+      }
+      const { checkoutUrl, boostId, devMode } = json.data as { checkoutUrl?: string; boostId?: string; devMode?: boolean };
+
+      if (devMode && boostId) {
+        const simRes = await authFetch(`${API_BASE}/api/listings/boost/${boostId}/dev-complete`, { method: 'POST' });
+        const simJson = await simRes.json().catch(() => ({}));
+        if (simRes.ok && simJson.success) {
+          setBoostModalVisible(false);
+          Alert.alert(
+            boostType === 'featured' ? '⭐ تم التمييز' : '📌 تم التثبيت',
+            `إعلانك ${boostType === 'featured' ? 'مميز' : 'مثبّت'} لمدة ${boostDuration} يوماً (وضع التطوير).`,
+          );
+        } else {
+          Alert.alert('خطأ', simJson.messageAr ?? 'فشل محاكاة الدفع');
+        }
+        return;
+      }
+
+      if (checkoutUrl) {
+        setBoostModalVisible(false);
+        await Linking.openURL(checkoutUrl);
+      } else {
+        Alert.alert('خطأ', 'لم يُرجع الخادم رابط الدفع');
+      }
+    } catch (err) {
+      Alert.alert('خطأ في الاتصال', 'تعذّر الوصول للخادم');
+    } finally {
+      setBoostProcessing(false);
+    }
+  };
 
   useEffect(() => {
     if (cached) setListing(cached);
@@ -342,6 +417,28 @@ export default function ListingDetailScreen() {
                     <Text style={[styles.ownerSecBtnText, { color: colors.rose }]}>حذف</Text>
                   </Pressable>
                 </View>
+
+                {/* ─── Boost CTA ─── */}
+                <View style={styles.boostRow}>
+                  <Pressable
+                    style={[styles.boostBtn, { backgroundColor: `${colors.gold}18`, borderColor: `${colors.gold}50` }]}
+                    onPress={() => { setBoostType('featured'); setBoostDuration(30); setBoostModalVisible(true); }}
+                  >
+                    <AppIcon name="star" size={16} color={colors.gold} />
+                    <Text style={[styles.boostBtnText, { color: colors.gold }]}>
+                      {listing.featured ? '⭐ مميز' : 'تمييز الإعلان'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.boostBtn, { backgroundColor: `${colors.electricBright}18`, borderColor: `${colors.electricBright}50` }]}
+                    onPress={() => { setBoostType('pinned'); setBoostDuration(7); setBoostModalVisible(true); }}
+                  >
+                    <AppIcon name="pin" size={16} color={colors.electricBright} />
+                    <Text style={[styles.boostBtnText, { color: colors.electricBright }]}>
+                      تثبيت الإعلان
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           ) : null}
@@ -384,6 +481,127 @@ export default function ListingDetailScreen() {
           </Pressable>
         </SafeAreaView>
       ) : null}
+
+      {/* ─── Boost Modal ─── */}
+      <Modal
+        visible={boostModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setBoostModalVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => !boostProcessing && setBoostModalVisible(false)} />
+        <View style={styles.boostModal}>
+          <LinearGradient colors={[colors.bgPrimary, colors.bgSurface]} style={StyleSheet.absoluteFill} />
+
+          {/* Header */}
+          <View style={[styles.boostModalHeader, rtlRow]}>
+            <Text style={styles.boostModalTitle}>
+              {boostType === 'featured' ? '⭐ تمييز الإعلان' : '📌 تثبيت الإعلان'}
+            </Text>
+            <Pressable onPress={() => !boostProcessing && setBoostModalVisible(false)} hitSlop={8}>
+              <AppIcon name="close" size={22} color={colors.textMuted} />
+            </Pressable>
+          </View>
+
+          {/* Type Selector */}
+          <View style={[styles.boostTypeRow, rtlRow]}>
+            {([
+              { key: 'featured' as const, icon: 'star',  label: 'إعلان مميز', desc: 'شارة ذهبية في نتائج البحث' },
+              { key: 'pinned'   as const, icon: 'pin',   label: 'تثبيت أعلى', desc: 'يظهر دائماً في المقدمة'    },
+            ]).map((t) => (
+              <Pressable
+                key={t.key}
+                onPress={() => { setBoostType(t.key); setBoostDuration(BOOST_PLANS[t.key][1].durationDays); }}
+                style={[
+                  styles.boostTypeBtn,
+                  boostType === t.key && {
+                    borderColor: t.key === 'featured' ? colors.gold : colors.electricBright,
+                    backgroundColor: t.key === 'featured' ? `${colors.gold}12` : `${colors.electricBright}12`,
+                  },
+                ]}
+              >
+                <AppIcon
+                  name={t.icon}
+                  size={20}
+                  color={boostType === t.key ? (t.key === 'featured' ? colors.gold : colors.electricBright) : colors.textMuted}
+                />
+                <Text style={[styles.boostTypeBtnLabel, boostType === t.key && { color: t.key === 'featured' ? colors.gold : colors.electricBright }]}>
+                  {t.label}
+                </Text>
+                <Text style={styles.boostTypeBtnDesc}>{t.desc}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Duration Selector */}
+          <Text style={styles.boostSectionLabel}>اختر مدة الترقية</Text>
+          <View style={[styles.boostDurRow, rtlRow]}>
+            {BOOST_PLANS[boostType].map((plan) => (
+              <Pressable
+                key={plan.durationDays}
+                onPress={() => setBoostDuration(plan.durationDays)}
+                style={[
+                  styles.boostDurChip,
+                  boostDuration === plan.durationDays && { borderColor: colors.electric, backgroundColor: `${colors.electric}14` },
+                ]}
+              >
+                <Text style={[styles.boostDurLabel, boostDuration === plan.durationDays && { color: colors.electricBright }]}>
+                  {plan.labelAr}
+                </Text>
+                <Text style={[styles.boostDurPrice, boostDuration === plan.durationDays && { color: colors.electricBright }]}>
+                  {plan.amount} ريال
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Payment Method */}
+          <Text style={styles.boostSectionLabel}>طريقة السداد</Text>
+          <View style={[styles.boostMethodRow, rtlRow]}>
+            {PAYMENT_METHODS_BOOST.map((m) => (
+              <Pressable
+                key={m.id}
+                onPress={() => setBoostMethod(m.id)}
+                style={[styles.boostMethodChip, boostMethod === m.id && { borderColor: colors.electric, backgroundColor: `${colors.electric}12` }]}
+              >
+                <Text style={{ fontSize: 14 }}>{m.icon}</Text>
+                <Text style={[styles.boostMethodLabel, boostMethod === m.id && { color: colors.electricBright }]}>
+                  {m.labelAr}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Pay CTA */}
+          <Pressable
+            style={[styles.boostPayBtn, boostProcessing && { opacity: 0.65 }]}
+            onPress={handleBoostPay}
+            disabled={boostProcessing}
+          >
+            <LinearGradient
+              colors={boostType === 'featured' ? ['#B8860B', '#FFD700', '#B8860B'] : [colors.electric, colors.electricBright, colors.electric]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.boostPayBtnInner}
+            >
+              {boostProcessing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <AppIcon name={boostType === 'featured' ? 'star' : 'pin'} size={18} color="#fff" />
+                  <Text style={styles.boostPayBtnText}>
+                    {boostType === 'featured' ? 'تمييز الإعلان' : 'تثبيت الإعلان'} · {selectedBoostPlan?.amount ?? 0} ريال
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </Pressable>
+
+          <View style={styles.boostNiBadge}>
+            <AppIcon name="lock" size={12} color={colors.textSubtle} />
+            <Text style={styles.boostNiText}>دفع آمن عبر Network International · PCI-DSS</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -622,5 +840,102 @@ function createStyles(colors: ThemeColors) {
       color: colors.textBrandStrong,
       fontWeight: '600',
     },
+    // ─── Boost row (in owner section) ───────────────────────────────────────
+    boostRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    boostBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+    },
+    boostBtnText: {
+      ...typography.caption,
+      fontWeight: '700',
+    },
+    // ─── Boost Modal ────────────────────────────────────────────────────────
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(6,9,26,0.75)',
+    },
+    boostModal: {
+      borderTopLeftRadius: radius.xxl,
+      borderTopRightRadius: radius.xxl,
+      padding: spacing.xl,
+      paddingBottom: spacing.xxxl,
+      overflow: 'hidden',
+      gap: spacing.lg,
+      borderTopWidth: 1,
+      borderColor: colors.borderMid,
+    },
+    boostModalHeader: {
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    boostModalTitle: { ...typography.h2, color: colors.textPrimary },
+    boostSectionLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '600', marginBottom: -spacing.sm },
+    boostTypeRow: { gap: spacing.sm },
+    boostTypeBtn: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radius.lg,
+      borderWidth: 1.5,
+      borderColor: colors.borderSoft,
+      backgroundColor: colors.bgSurface,
+    },
+    boostTypeBtnLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
+    boostTypeBtnDesc:  { fontSize: 10, color: colors.textSubtle, textAlign: 'center' },
+    boostDurRow: { gap: spacing.sm },
+    boostDurChip: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 2,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      backgroundColor: colors.bgSurface,
+    },
+    boostDurLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
+    boostDurPrice: { fontSize: 11, color: colors.textSubtle, fontWeight: '700' },
+    boostMethodRow: { flexWrap: 'wrap', gap: spacing.sm },
+    boostMethodChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 7,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      backgroundColor: colors.bgSurface,
+    },
+    boostMethodLabel: { ...typography.micro, color: colors.textMuted },
+    boostPayBtn: { borderRadius: radius.xl, overflow: 'hidden' },
+    boostPayBtnInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: spacing.lg,
+      borderRadius: radius.xl,
+    },
+    boostPayBtnText: { ...typography.bodyStrong, color: '#fff', fontSize: 15 },
+    boostNiBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    boostNiText: { ...typography.micro, color: colors.textSubtle },
   });
 }

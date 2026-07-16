@@ -568,6 +568,16 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
               },
             }),
           ]);
+        } else if (fulfillment.boost) {
+          const b = fulfillment.boost;
+          const isFeatured = b.boostType === 'featured';
+          await this.notifications.notifyUser({
+            userId,
+            type: 'system',
+            titleAr: isFeatured ? '⭐ تم تمييز إعلانك' : '📌 تم تثبيت إعلانك',
+            bodyAr: `إعلانك ${isFeatured ? 'مميز' : 'مثبّت'} حتى ${b.expiresAt.toLocaleDateString('ar-SA')}.`,
+            data: { boostId: b.id, listingId: b.listingId, boostType: b.boostType },
+          });
         } else {
           await this.notifications.notifyUser({
             userId,
@@ -725,13 +735,27 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
 
         if (fulfillment.processed) {
           await this.subscriptionCache.invalidate(userId);
-          await this.notifications.notifyUser({
-            userId,
-            type: 'system',
-            titleAr: '✅ تم الدفع بنجاح',
-            bodyAr: `تم تأكيد دفعتك — رقم العملية: ${niTxId}`,
-            data: { paymentId, transactionId: niTxId },
-          });
+
+          if (fulfillment.boost) {
+            const b = fulfillment.boost;
+            const isFeatured = b.boostType === 'featured';
+            await this.notifications.notifyUser({
+              userId,
+              type: 'system',
+              titleAr: isFeatured ? '⭐ تم تمييز إعلانك' : '📌 تم تثبيت إعلانك',
+              bodyAr: `إعلانك ${isFeatured ? 'مميز' : 'مثبّت'} حتى ${b.expiresAt.toLocaleDateString('ar-SA')}.`,
+              data: { boostId: b.id, listingId: b.listingId, boostType: b.boostType },
+            });
+          } else {
+            await this.notifications.notifyUser({
+              userId,
+              type: 'system',
+              titleAr: '✅ تم الدفع بنجاح',
+              bodyAr: `تم تأكيد دفعتك — رقم العملية: ${niTxId}`,
+              data: { paymentId, transactionId: niTxId },
+            });
+          }
+
           this.logger.info({ paymentId, orderRef, state }, 'Payment synced → paid');
         }
         return { paymentId, status: 'paid', synced: fulfillment.processed };

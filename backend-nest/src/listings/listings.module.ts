@@ -2,9 +2,12 @@ import { Module } from '@nestjs/common';
 import { ListingsController } from './listings.controller';
 import { ListingsService } from './listings.service';
 import { ListingsRepository } from './repositories/listings.repository';
+import { ListingBoostController } from './boost/listing-boost.controller';
+import { ListingBoostService } from './boost/listing-boost.service';
 
 @Module({
-  controllers: [ListingsController],
-  providers: [ListingsService, ListingsRepository],
+  controllers: [ListingsController, ListingBoostController],
+  providers: [ListingsService, ListingsRepository, ListingBoostService],
+  exports: [ListingBoostService],
 })
 export class ListingsModule {}

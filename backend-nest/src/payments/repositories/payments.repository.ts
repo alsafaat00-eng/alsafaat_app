@@ -201,6 +201,12 @@ export class PaymentsRepository {
       butcherUserId: string;
       nameAr: string;
     };
+    boost?: {
+      id: string;
+      boostType: string;
+      listingId: string;
+      expiresAt: Date;
+    };
   }> {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.payment.updateMany({
@@ -386,10 +392,52 @@ export class PaymentsRepository {
         };
       }
 
+      // ── Listing boost (featured_ad / pinned_ad) ──────────────────────────
+      let boost:
+        | { id: string; boostType: string; listingId: string; expiresAt: Date }
+        | undefined;
+
+      if (
+        (params.type === 'featured_ad' || params.type === 'pinned_ad') &&
+        params.referenceId
+      ) {
+        const existing = await tx.listingBoost.findUnique({
+          where: { id: params.referenceId },
+          select: { id: true, boostType: true, listingId: true, durationDays: true, status: true },
+        });
+
+        if (existing && existing.status !== 'paid') {
+          const now     = new Date();
+          const expires = new Date(now.getTime() + existing.durationDays * 24 * 60 * 60 * 1000);
+
+          await tx.listingBoost.update({
+            where: { id: params.referenceId },
+            data: {
+              status: 'paid',
+              paidAt: now,
+              transactionId: params.niTransactionId,
+              startsAt: now,
+              expiresAt: expires,
+            },
+          });
+
+          await tx.listing.update({
+            where: { id: existing.listingId },
+            data:
+              existing.boostType === 'featured'
+                ? { featured: true, featuredUntil: expires }
+                : { pinned: true, pinnedUntil: expires },
+          });
+
+          boost = { id: existing.id, boostType: existing.boostType, listingId: existing.listingId, expiresAt: expires };
+        }
+      }
+
       return {
         processed: true,
         subscription: subscriptionResult,
         butcherOrder,
+        boost,
       };
     });
   }
@@ -442,7 +490,6 @@ export class PaymentsRepository {
       where: {
         status: 'pending',
         createdAt: { lt: cutoff },
-        orderId: { not: null },
       },
       select: {
         id: true,
