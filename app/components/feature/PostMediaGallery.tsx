@@ -1,10 +1,11 @@
 // SAFAT — Post media gallery: single image, swipeable multi-image carousel,
 // or video. Each image lazily fades in once loaded, with a shimmer skeleton
-// shown while it downloads.
+// shown while it downloads. Tap any image to open full-screen viewer.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -15,12 +16,11 @@ import {
 import { ScrollView } from 'react-native';
 import { Image, uriSource } from '@/components/ui/AppImage';
 import { StoryVideoPlayer } from '@/components/feature/StoryVideoPlayer';
+import { ImageViewerModal } from '@/components/ui/ImageViewerModal';
 import { radius, type ThemeColors } from '@/constants/theme';
 
 const ASPECT_RATIO = 4 / 3;
 
-// A plain ViewStyle equivalent of StyleSheet.absoluteFill — StoryVideoPlayer's
-// `style` prop is typed as ViewStyle, which RegisteredStyle<...> doesn't satisfy.
 const ABS_FILL: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 };
 
 interface PostMediaGalleryProps {
@@ -51,7 +51,15 @@ function MediaSkeleton({ colors }: { colors: ThemeColors }) {
   );
 }
 
-function GalleryImage({ uri, colors }: { uri: string; colors: ThemeColors }) {
+function GalleryImage({
+  uri,
+  colors,
+  onPress,
+}: {
+  uri: string;
+  colors: ThemeColors;
+  onPress?: () => void;
+}) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const opacity = useRef(new Animated.Value(0)).current;
@@ -62,7 +70,7 @@ function GalleryImage({ uri, colors }: { uri: string; colors: ThemeColors }) {
   }, [opacity]);
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <Pressable style={StyleSheet.absoluteFill} onPress={onPress}>
       {!loaded && !failed ? <MediaSkeleton colors={colors} /> : null}
       {!failed ? (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity }]}>
@@ -75,13 +83,20 @@ function GalleryImage({ uri, colors }: { uri: string; colors: ThemeColors }) {
           />
         </Animated.View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
 export function PostMediaGallery({ images, video, colors, scheme }: PostMediaGalleryProps) {
   const [width, setWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  const openViewer = useCallback((idx: number) => {
+    setViewerIndex(idx);
+    setViewerVisible(true);
+  }, []);
 
   const onLayout = useCallback(
     (e: { nativeEvent: { layout: { width: number } } }) => setWidth(e.nativeEvent.layout.width),
@@ -123,53 +138,70 @@ export function PostMediaGallery({ images, video, colors, scheme }: PostMediaGal
 
   if (images.length === 1) {
     return (
-      <View style={containerStyle} onLayout={onLayout}>
-        <GalleryImage uri={images[0]} colors={colors} />
-      </View>
+      <>
+        <View style={containerStyle} onLayout={onLayout}>
+          <GalleryImage uri={images[0]} colors={colors} onPress={() => openViewer(0)} />
+        </View>
+        <ImageViewerModal
+          visible={viewerVisible}
+          images={images}
+          initialIndex={0}
+          onClose={() => setViewerVisible(false)}
+        />
+      </>
     );
   }
 
   const pageWidth = width || Dimensions.get('window').width;
 
   return (
-    <View style={containerStyle} onLayout={onLayout}>
-      <ScrollView
-        style={StyleSheet.absoluteFill}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        decelerationRate="fast"
-      >
-        {images.map((uri, idx) => (
-          <View key={`${uri}-${idx}`} style={{ width: pageWidth }}>
-            <GalleryImage uri={uri} colors={colors} />
-          </View>
-        ))}
-      </ScrollView>
+    <>
+      <View style={containerStyle} onLayout={onLayout}>
+        <ScrollView
+          style={StyleSheet.absoluteFill}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          decelerationRate="fast"
+        >
+          {images.map((uri, idx) => (
+            <View key={`${uri}-${idx}`} style={{ width: pageWidth }}>
+              <GalleryImage uri={uri} colors={colors} onPress={() => openViewer(idx)} />
+            </View>
+          ))}
+        </ScrollView>
 
-      <View style={styles.countBadge} pointerEvents="none">
-        <Text style={styles.countText}>
-          {activeIndex + 1}/{images.length}
-        </Text>
+        <View style={styles.countBadge} pointerEvents="none">
+          <Text style={styles.countText}>
+            {activeIndex + 1}/{images.length}
+          </Text>
+        </View>
+
+        <View style={styles.dotsRow} pointerEvents="none">
+          {images.map((_, idx) => (
+            <View
+              key={idx}
+              style={[
+                styles.dot,
+                idx === activeIndex && {
+                  backgroundColor: '#fff',
+                  width: 7,
+                },
+              ]}
+            />
+          ))}
+        </View>
       </View>
 
-      <View style={styles.dotsRow} pointerEvents="none">
-        {images.map((_, idx) => (
-          <View
-            key={idx}
-            style={[
-              styles.dot,
-              idx === activeIndex && {
-                backgroundColor: '#fff',
-                width: 7,
-              },
-            ]}
-          />
-        ))}
-      </View>
-    </View>
+      <ImageViewerModal
+        visible={viewerVisible}
+        images={images}
+        initialIndex={viewerIndex}
+        onClose={() => setViewerVisible(false)}
+      />
+    </>
   );
 }
 

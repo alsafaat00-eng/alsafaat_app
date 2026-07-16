@@ -53,6 +53,8 @@ export default function UserProfileScreen() {
     toggleBookmark,
     deletePost,
     addComment,
+    followedUserIds,
+    setFollowState,
   } = useApp();
   const { accessToken, isAuthenticated } = useAuth();
   const { gradients, colors: themeColors } = useTheme();
@@ -78,9 +80,19 @@ export default function UserProfileScreen() {
     const targetId = id || me.id;
     setLoading(true);
     const data = await fetchUserProfile(targetId);
-    setProfile(data);
+    if (data) {
+      // Merge with local follow override so navigating back never resets the button
+      const localFollowing = followedUserIds.has(data.id);
+      setProfile({ ...data, isFollowing: data.isFollowing || localFollowing });
+      // Keep local state in sync with what the API returned
+      if (data.isFollowing !== localFollowing) {
+        setFollowState(data.id, data.isFollowing);
+      }
+    } else {
+      setProfile(null);
+    }
     setLoading(false);
-  }, [id, me.id]);
+  }, [id, me.id, followedUserIds, setFollowState]);
 
   useEffect(() => {
     if (isOwnProfile) {
@@ -111,6 +123,8 @@ export default function UserProfileScreen() {
     setFollowLoading(true);
     const result = await toggleFollowUser(profile.id);
     if (result) {
+      // Update global follow state — survives navigation
+      setFollowState(profile.id, result.following);
       setProfile((prev) =>
         prev
           ? {

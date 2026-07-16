@@ -21,6 +21,7 @@ import { Image } from '@/components/ui/AppImage';
 import { LinearGradient } from '@/components/ui/AppLinearGradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ImageViewerModal } from '@/components/ui/ImageViewerModal';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -36,6 +37,8 @@ export default function ListingDetailScreen() {
   const [loading, setLoading] = useState(!cached);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
 
   // ─── Boost state ──────────────────────────────────────────────────────────
   const [boostModalVisible, setBoostModalVisible] = useState(false);
@@ -381,16 +384,27 @@ export default function ListingDetailScreen() {
           {images.length > 0 ? (
             <View style={styles.gallery}>
               {images.map((uri, index) => (
-                <Image
+                <Pressable
                   key={`${uri}-${index}`}
-                  source={{ uri }}
-                  style={[styles.galleryImg, index === 0 && styles.galleryImgMain]}
-                  contentFit="cover"
-                  transition={300}
-                />
+                  onPress={() => { setImageViewerIndex(index); setImageViewerVisible(true); }}
+                >
+                  <Image
+                    source={{ uri }}
+                    style={[styles.galleryImg, index === 0 && styles.galleryImgMain]}
+                    contentFit="cover"
+                    transition={300}
+                  />
+                </Pressable>
               ))}
             </View>
           ) : null}
+
+          <ImageViewerModal
+            visible={imageViewerVisible}
+            images={images}
+            initialIndex={imageViewerIndex}
+            onClose={() => setImageViewerVisible(false)}
+          />
 
           {isOwner ? (
             <View style={styles.ownerActions}>
