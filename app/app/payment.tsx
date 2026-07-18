@@ -8,12 +8,10 @@ import { AppIcon } from '@/components/ui/FlaticonIcon';
 import { LinearGradient } from '@/components/ui/AppLinearGradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import * as WebBrowser from 'expo-web-browser';
 import {
   ActivityIndicator,
   Alert,
   Animated,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,6 +24,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useApp } from '@/hooks/useApp';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE } from '@/services/api';
+import { openPaymentCheckout } from '@/services/paymentCheckout';
 import { NIPaymentMethod, PAYMENT_METHODS } from '@/services/network_international';
 import { normalizeSlug, planGradientColors } from '@/services/subscriptionPlans';
 import { usePlans } from '@/hooks/usePlans';
@@ -303,9 +302,7 @@ export default function PaymentScreen() {
               {
                 text: '🌐 فتح رابط الدفع',
                 onPress: async () => {
-                  const canOpen = await Linking.canOpenURL(checkoutUrl);
-                  if (canOpen) await Linking.openURL(checkoutUrl);
-                  else await WebBrowser.openBrowserAsync(checkoutUrl);
+                  await openPaymentCheckout(checkoutUrl, paymentId);
                 },
               },
               { text: 'إلغاء', style: 'cancel', onPress: () => setStep('method') },
@@ -318,14 +315,12 @@ export default function PaymentScreen() {
         // so random card numbers are rejected by the gateway itself.
         Alert.alert(
           'صفحة الدفع الآمنة',
-          'ستُفتح بوابة Network International.\n\nلا تستخدم رقماً عشوائياً للبطاقة؛ يلزم استخدام بطاقة صالحة، أو بطاقة اختبار رسمية يوفرها حساب NI إن تم تفعيل وضع الاختبار.',
+          'ستُفتح بوابة Network International داخل التطبيق.\n\nلا تستخدم رقماً عشوائياً للبطاقة؛ يلزم استخدام بطاقة صالحة، أو بطاقة اختبار رسمية يوفرها حساب NI إن تم تفعيل وضع الاختبار.',
           [
             {
               text: 'متابعة للدفع',
               onPress: async () => {
-                const canOpen = await Linking.canOpenURL(checkoutUrl);
-                if (canOpen) await Linking.openURL(checkoutUrl);
-                else await WebBrowser.openBrowserAsync(checkoutUrl);
+                await openPaymentCheckout(checkoutUrl, paymentId);
                 await refetchSubscription();
               },
             },

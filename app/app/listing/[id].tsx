@@ -14,13 +14,14 @@ import { openUserProfile } from '@/lib/openUserProfile';
 import { BRAND_VERIFIED_AR, BRAND_VERIFIED_EN } from '@/constants/brandCopy';
 import { API_BASE } from '@/services/api';
 import { authFetch } from '@/services/authFetch';
+import { openPaymentCheckout } from '@/services/paymentCheckout';
 import { promptReport } from '@/services/reports';
 import { alertMessage, confirmDestructive } from '@/lib/actionSheet';
 import { AppIcon } from '@/components/ui/FlaticonIcon';
 import { Image } from '@/components/ui/AppImage';
 import { LinearGradient } from '@/components/ui/AppLinearGradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ImageViewerModal } from '@/components/ui/ImageViewerModal';
 import { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -85,7 +86,12 @@ export default function ListingDetailScreen() {
         Alert.alert('فشل', json.messageAr ?? json.message ?? 'تعذّر إطلاق خدمة الترقية');
         return;
       }
-      const { checkoutUrl, boostId, devMode } = json.data as { checkoutUrl?: string; boostId?: string; devMode?: boolean };
+      const { checkoutUrl, boostId, paymentId, devMode } = json.data as {
+        checkoutUrl?: string;
+        boostId?: string;
+        paymentId?: string;
+        devMode?: boolean;
+      };
 
       if (devMode && boostId) {
         const simRes = await authFetch(`${API_BASE}/api/listings/boost/${boostId}/dev-complete`, { method: 'POST' });
@@ -104,7 +110,7 @@ export default function ListingDetailScreen() {
 
       if (checkoutUrl) {
         setBoostModalVisible(false);
-        await Linking.openURL(checkoutUrl);
+        await openPaymentCheckout(checkoutUrl, paymentId);
       } else {
         Alert.alert('خطأ', 'لم يُرجع الخادم رابط الدفع');
       }

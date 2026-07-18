@@ -1,6 +1,6 @@
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'path';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 loadEnv({ path: resolve(process.cwd(), '.env') });
@@ -89,7 +89,14 @@ async function bootstrap() {
     }),
   );
 
-  app.setGlobalPrefix('api');
+  // Payment return URLs from Network International hit the API host (APP_URL)
+  // without the /api prefix — bridge pages open the mobile deep link.
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: 'payment/result', method: RequestMethod.GET },
+      { path: 'payment/cancel', method: RequestMethod.GET },
+    ],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

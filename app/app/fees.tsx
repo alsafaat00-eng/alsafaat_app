@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -25,10 +24,10 @@ import { useTheme } from '@/hooks/useTheme';
 import { rtlBackIcon, rtlForwardIcon } from '@/lib/rtl';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE } from '@/services/api';
+import { openPaymentCheckout } from '@/services/paymentCheckout';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useApp } from '@/hooks/useApp';
-import {
-  PendingFee,
+import {  PendingFee,
   getFeesSummary,
   formatDueDate,
   ListingCategory,
@@ -208,7 +207,7 @@ export default function FeesScreen() {
         }
 
         if (checkoutUrl) {
-          await Linking.openURL(checkoutUrl);
+          await openPaymentCheckout(checkoutUrl, paymentId);
           setSelectedFees(new Set());
           setShowPayModal(false);
           Alert.alert(
@@ -289,7 +288,7 @@ export default function FeesScreen() {
               {
                 text: 'متابعة للدفع',
                 onPress: async () => {
-                  await Linking.openURL(checkoutUrl);
+                  await openPaymentCheckout(checkoutUrl, paymentId);
                 },
               },
               { text: 'إلغاء', style: 'cancel' },

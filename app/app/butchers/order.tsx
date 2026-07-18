@@ -15,15 +15,14 @@ import {
   View,
   Alert,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, gradients, radius, spacing, typography } from '@/constants/theme';
 import { rtlBackIcon } from '@/lib/rtl';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE } from '@/services/api';
-import {
-  CATEGORY_LABELS,
+import { openPaymentCheckout } from '@/services/paymentCheckout';
+import {  CATEGORY_LABELS,
   CUT_LABELS,
   CutType,
   DeliveryType,
@@ -243,7 +242,7 @@ export default function ButcherOrderScreen() {
       }
 
       if (checkoutUrl) {
-        await Linking.openURL(checkoutUrl).catch(() => {});
+        await openPaymentCheckout(checkoutUrl, paymentId);
         Alert.alert(
           'أكمل الدفع',
           'تم فتح بوابة الدفع. بعد إتمام الدفع سيصل طلبك للملحمة تلقائياً.',
