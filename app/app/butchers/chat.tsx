@@ -103,6 +103,7 @@ export default function ButcherChatScreen() {
     receiverAvatar,
     threadType: threadTypeParam,
     accountType: accountTypeParam,
+    draftMessage: draftMessageParam,
   } = useLocalSearchParams<{
     butcherId?: string;
     threadId?: string;
@@ -111,6 +112,7 @@ export default function ButcherChatScreen() {
     receiverAvatar?: string;
     threadType?: string;
     accountType?: string;
+    draftMessage?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -146,6 +148,12 @@ export default function ButcherChatScreen() {
   );
   const [sending, setSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+
+  useEffect(() => {
+    if (typeof draftMessageParam === 'string' && draftMessageParam.trim()) {
+      setInputText(draftMessageParam.trim());
+    }
+  }, [draftMessageParam]);
 
   const receiverUserId = receiverId || butcher?.user?.id;
   const effectiveButcherId = butcherId || resolvedButcherId;

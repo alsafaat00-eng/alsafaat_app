@@ -10,7 +10,6 @@ import { type Listing } from '@/services/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchUserProfile, setFollowUser } from '@/services/users';
 import { openUserProfile } from '@/lib/openUserProfile';
-import { BRAND_VERIFIED_AR, BRAND_VERIFIED_EN } from '@/constants/brandCopy';
 import { API_BASE } from '@/services/api';
 import { authFetch } from '@/services/authFetch';
 import { launchPaymentCheckout } from '@/services/payments';
@@ -36,6 +35,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { ImageViewerModal } from '@/components/ui/ImageViewerModal';
+import { ListingCommentsSection } from '@/components/feature/ListingCommentsSection';
 import { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -217,8 +217,12 @@ export default function ListingDetailScreen() {
     void refreshSellerFollowState();
   }, [refreshSellerFollowState]);
 
-  const openSellerChat = () => {
+  const openSellerChat = (draftMessage?: string) => {
     if (!listing) return;
+    if (!isAuthenticated) {
+      Alert.alert('تسجيل الدخول', 'يجب تسجيل الدخول لمراسلة البائع');
+      return;
+    }
     router.push({
       pathname: '/butchers/chat',
       params: {
@@ -227,6 +231,7 @@ export default function ListingDetailScreen() {
         receiverAvatar: listing.seller.avatar ?? '',
         accountType: 'LIVESTOCK_TRADER',
         threadType: 'DIRECT',
+        ...(draftMessage?.trim() ? { draftMessage: draftMessage.trim() } : {}),
       },
     } as any);
   };
@@ -500,6 +505,51 @@ export default function ListingDetailScreen() {
 
         {/* ─── Content sheet ─── */}
         <View style={styles.sheet}>
+          {/* Title + seller + follow */}
+          <View style={[styles.titleRow, rtlRow]}>
+            <View style={styles.titleCol}>
+              <Text style={styles.title}>{listing.arabicTitle || listing.title}</Text>
+              {!isOwner ? (
+                <Pressable
+                  onPress={() => openUserProfile(router, listing.seller.id)}
+                  style={[styles.sellerInline, rtlRow]}
+                >
+                  <Image
+                    source={uriSource(listing.seller.avatar)}
+                    style={styles.sellerInlineAvatar}
+                    contentFit="cover"
+                  />
+                  <Text style={styles.sellerInlineName} numberOfLines={1}>
+                    {listing.seller.arabicName || listing.seller.displayName || listing.seller.username}
+                  </Text>
+                  {listing.seller.verified ? (
+                    <AppIcon name="checkmark-circle" size={14} color={colors.electricBright} />
+                  ) : null}
+                </Pressable>
+              ) : null}
+            </View>
+            {!isOwner ? (
+              <Pressable
+                onPress={handleFollowSeller}
+                disabled={followLoading || isFollowing === null}
+                style={[styles.followPill, isFollowing === true && styles.followingPill]}
+              >
+                {isFollowing === null && isAuthenticated ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text
+                    style={[
+                      styles.followPillText,
+                      isFollowing === true && styles.followingPillText,
+                    ]}
+                  >
+                    {isFollowing ? 'متابَع' : 'متابعة'}
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
+          </View>
+
           {/* Price + featured */}
           <View style={[styles.priceHeader, rtlRow]}>
             {listing.price > 0 ? (
@@ -518,42 +568,46 @@ export default function ListingDetailScreen() {
             ) : null}
           </View>
 
-          <Text style={styles.title}>{listing.arabicTitle || listing.title}</Text>
-
-          {/* Meta chips */}
-          <View style={[styles.chipsRow, rtlRow]}>
-            <View style={[styles.chip, rtlRow]}>
-              <AppIcon name="map-marker-outline" size={13} color={colors.textBrandStrong} />
-              <Text style={styles.chipText}>{listing.arabicLocation || listing.location}</Text>
+          {/* Listing details */}
+          <View style={styles.detailsCard}>
+            <View style={[styles.sectionHeader, rtlRow]}>
+              <View style={styles.sectionBar} />
+              <Text style={styles.sectionTitle}>تفاصيل الإعلان</Text>
             </View>
-            <View style={[styles.chip, rtlRow]}>
-              <AppIcon name="time-outline" size={13} color={colors.textBrandStrong} />
-              <Text style={styles.chipText}>{timeLabel || 'الآن'}</Text>
+            <View style={[styles.chipsRow, rtlRow]}>
+              <View style={[styles.chip, rtlRow]}>
+                <AppIcon name="map-marker-outline" size={13} color={colors.textBrandStrong} />
+                <Text style={styles.chipText}>{listing.arabicLocation || listing.location}</Text>
+              </View>
+              <View style={[styles.chip, rtlRow]}>
+                <AppIcon name="time-outline" size={13} color={colors.textBrandStrong} />
+                <Text style={styles.chipText}>{timeLabel || 'الآن'}</Text>
+              </View>
+              {categoryLabel ? (
+                <View style={[styles.chip, rtlRow]}>
+                  <AppIcon name="tag-outline" size={13} color={colors.textBrandStrong} />
+                  <Text style={styles.chipText}>{categoryLabel}</Text>
+                </View>
+              ) : null}
+              {listing.breed ? (
+                <View style={[styles.chip, rtlRow]}>
+                  <Text style={styles.chipText}>{listing.breed}</Text>
+                </View>
+              ) : null}
+              {listing.age ? (
+                <View style={[styles.chip, rtlRow]}>
+                  <Text style={styles.chipText}>{listing.age}</Text>
+                </View>
+              ) : null}
+              {listing.weightKg ? (
+                <View style={[styles.chip, rtlRow]}>
+                  <Text style={styles.chipText}>{listing.weightKg.toLocaleString('ar-SA')} كجم</Text>
+                </View>
+              ) : null}
             </View>
-            {categoryLabel ? (
-              <View style={[styles.chip, rtlRow]}>
-                <AppIcon name="tag-outline" size={13} color={colors.textBrandStrong} />
-                <Text style={styles.chipText}>{categoryLabel}</Text>
-              </View>
-            ) : null}
-            {listing.breed ? (
-              <View style={[styles.chip, rtlRow]}>
-                <Text style={styles.chipText}>{listing.breed}</Text>
-              </View>
-            ) : null}
-            {listing.age ? (
-              <View style={[styles.chip, rtlRow]}>
-                <Text style={styles.chipText}>{listing.age}</Text>
-              </View>
-            ) : null}
-            {listing.weightKg ? (
-              <View style={[styles.chip, rtlRow]}>
-                <Text style={styles.chipText}>{listing.weightKg.toLocaleString('ar-SA')} كجم</Text>
-              </View>
-            ) : null}
           </View>
 
-          {/* ─── Owner management: single horizontal row ─── */}
+          {/* Owner management */}
           {isOwner ? (
             <View style={styles.ownerCard}>
               <View style={[styles.ownerHeader, rtlRow]}>
@@ -601,53 +655,6 @@ export default function ListingDetailScreen() {
             </View>
           ) : null}
 
-          {/* Seller card */}
-          {!isOwner ? (
-            <View style={[styles.sellerCard, rtlRow]}>
-              <Pressable
-                onPress={() => openUserProfile(router, listing.seller.id)}
-                style={[styles.sellerInfo, rtlRow]}
-              >
-                <Image
-                  source={uriSource(listing.seller.avatar)}
-                  style={styles.sellerAvatar}
-                  contentFit="cover"
-                />
-                <View style={styles.sellerNameCol}>
-                  <View style={[rtlRow, { alignItems: 'center', gap: 4 }]}>
-                    <Text style={styles.sellerChipName} numberOfLines={1}>
-                      {listing.seller.arabicName || listing.seller.displayName || listing.seller.username}
-                    </Text>
-                    {listing.seller.verified ? (
-                      <AppIcon name="shield-checkmark" size={14} color={colors.electricBright} />
-                    ) : null}
-                  </View>
-                  <Text style={styles.sellerFollowers}>
-                    {listing.seller.followers.toLocaleString('ar-SA')} متابع
-                  </Text>
-                </View>
-              </Pressable>
-              <Pressable
-                onPress={handleFollowSeller}
-                disabled={followLoading || isFollowing === null}
-                style={[styles.followPill, isFollowing === true && styles.followingPill]}
-              >
-                {isFollowing === null && isAuthenticated ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text
-                    style={[
-                      styles.followPillText,
-                      isFollowing === true && styles.followingPillText,
-                    ]}
-                  >
-                    {isFollowing ? 'متابَع' : 'متابعة'}
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          ) : null}
-
           {/* Description */}
           {(listing.arabicDescription || listing.description) ? (
             <View style={styles.descBlock}>
@@ -664,16 +671,39 @@ export default function ListingDetailScreen() {
             </View>
           ) : null}
 
-          {/* Trust card */}
-          <View style={[styles.trustCard, rtlRow]}>
-            <View style={styles.trustIconWrap}>
-              <AppIcon name="shield-check" size={20} color={colors.success} />
+          {/* Public listing replies */}
+          <ListingCommentsSection listingId={listing.id} />
+
+          {/* Private contact with seller */}
+          {!isOwner ? (
+            <View style={styles.contactCard}>
+              <View style={[styles.sectionHeader, rtlRow]}>
+                <View style={styles.sectionBar} />
+                <Text style={styles.sectionTitle}>تواصل مع البائع</Text>
+              </View>
+              <Text style={styles.contactHint}>
+                للمحادثة الخاصة استخدم المراسلة داخل التطبيق أو واتساب.
+              </Text>
+              <View style={[styles.contactActions, rtlRow]}>
+                <Pressable
+                  onPress={() => openSellerChat()}
+                  style={({ pressed }) => [styles.contactBtnPrimary, pressed && { opacity: 0.88 }]}
+                >
+                  <AppIcon name="chatbubbles" size={18} color="#fff" />
+                  <Text style={styles.contactBtnPrimaryText}>مراسلة داخل التطبيق</Text>
+                </Pressable>
+                {listing.contactPhone ? (
+                  <Pressable
+                    onPress={openSellerWhatsApp}
+                    style={({ pressed }) => [styles.contactBtnWhatsApp, pressed && { opacity: 0.88 }]}
+                  >
+                    <AppIcon name="whatsapp" size={18} color="#fff" />
+                    <Text style={styles.contactBtnWhatsAppText}>واتساب</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.trustTitle}>{BRAND_VERIFIED_AR}</Text>
-              <Text style={styles.trustDesc}>{BRAND_VERIFIED_EN} · مستندات وملكية موثّقة</Text>
-            </View>
-          </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -681,19 +711,25 @@ export default function ListingDetailScreen() {
       {!isOwner ? (
         <SafeAreaView edges={['bottom']} style={styles.ctaBar}>
           <Pressable
-            onPress={openSellerChat}
-            style={({ pressed }) => [styles.ctaIcon, pressed && { opacity: 0.7 }]}
+            onPress={() => openSellerChat()}
+            style={({ pressed }) => [styles.ctaBtnApp, pressed && { opacity: 0.88 }]}
           >
-            <AppIcon name="chatbubbles" size={22} color={colors.textBrandStrong} />
+            <AppIcon name="chatbubbles" size={20} color="#fff" />
+            <Text style={styles.ctaBtnAppText}>مراسلة</Text>
           </Pressable>
-          <Pressable
-            onPress={listing.contactPhone ? openSellerWhatsApp : openSellerChat}
-            style={{ flex: 1 }}
-          >
-            <PrimaryButton
-              title={listing.contactPhone ? 'تواصل عبر واتساب' : 'مراسلة البائع'}
-            />
-          </Pressable>
+          {listing.contactPhone ? (
+            <Pressable
+              onPress={openSellerWhatsApp}
+              style={({ pressed }) => [styles.ctaBtnWa, pressed && { opacity: 0.88 }]}
+            >
+              <AppIcon name="whatsapp" size={20} color="#fff" />
+              <Text style={styles.ctaBtnWaText}>واتساب</Text>
+            </Pressable>
+          ) : (
+            <View style={{ flex: 1 }}>
+              <PrimaryButton title="مراسلة البائع" onPress={() => openSellerChat()} />
+            </View>
+          )}
         </SafeAreaView>
       ) : null}
 
@@ -942,13 +978,52 @@ function createStyles(colors: ThemeColors) {
       borderRadius: radius.pill,
     },
     featuredText: { ...typography.micro, color: '#1A1300', fontWeight: '800' },
+    titleRow: {
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+    },
+    titleCol: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.sm,
+    },
     title: {
       ...typography.h2,
       color: colors.textPrimary,
-      fontWeight: '700',
+      fontWeight: '800',
       textAlign: 'right',
       writingDirection: 'rtl',
       lineHeight: 32,
+    },
+    sellerInline: {
+      alignItems: 'center',
+      gap: 8,
+      alignSelf: 'flex-start',
+    },
+    sellerInlineAvatar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.bgElevated,
+      borderWidth: 1.5,
+      borderColor: colors.electric,
+    },
+    sellerInlineName: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      fontWeight: '700',
+      maxWidth: 180,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    },
+    detailsCard: {
+      gap: spacing.sm,
+      padding: spacing.md,
+      borderRadius: radius.xl,
+      backgroundColor: colors.bgSurface,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
     },
 
     // Meta chips
@@ -1045,50 +1120,13 @@ function createStyles(colors: ThemeColors) {
     },
     soonBadgeText: { fontSize: 8, color: '#1A1300', fontWeight: '800' },
 
-    // ─── Seller card ──────────────────────────────────────────────────────
-    sellerCard: {
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.sm,
-      padding: spacing.md,
-      borderRadius: radius.xl,
-      backgroundColor: colors.bgSurface,
-      borderWidth: 1,
-      borderColor: colors.borderSoft,
-    },
-    sellerInfo: {
-      alignItems: 'center',
-      gap: 10,
-      flex: 1,
-      minWidth: 0,
-    },
-    sellerNameCol: { flex: 1, minWidth: 0, gap: 2 },
-    sellerAvatar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.bgElevated,
-      borderWidth: 2,
-      borderColor: colors.electric,
-    },
-    sellerChipName: {
-      ...typography.bodyStrong,
-      color: colors.textPrimary,
-      flexShrink: 1,
-      textAlign: 'right',
-      writingDirection: 'rtl',
-    },
-    sellerFollowers: {
-      ...typography.micro,
-      color: colors.textMuted,
-      textAlign: 'right',
-      writingDirection: 'rtl',
-    },
     followPill: {
       paddingHorizontal: spacing.lg,
       paddingVertical: 9,
       borderRadius: radius.pill,
       backgroundColor: colors.electricBright,
+      alignSelf: 'flex-start',
+      marginTop: 4,
     },
     followingPill: {
       backgroundColor: 'transparent',
@@ -1124,35 +1162,53 @@ function createStyles(colors: ThemeColors) {
       lineHeight: 26,
     },
 
-    // Trust card
-    trustCard: {
-      alignItems: 'center',
+    contactCard: {
       gap: spacing.md,
       padding: spacing.md,
-      borderRadius: radius.lg,
-      backgroundColor: 'rgba(16,185,129,0.08)',
+      borderRadius: radius.xl,
+      backgroundColor: colors.bgSurface,
       borderWidth: 1,
-      borderColor: 'rgba(16,185,129,0.25)',
+      borderColor: colors.borderSoft,
     },
-    trustIconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+    contactHint: {
+      ...typography.caption,
+      color: colors.textMuted,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+      lineHeight: 20,
+    },
+    contactActions: {
+      gap: spacing.sm,
+    },
+    contactBtnPrimary: {
+      flex: 1,
+      ...rtlRow,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(16,185,129,0.14)',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: radius.lg,
+      backgroundColor: colors.electric,
     },
-    trustTitle: {
+    contactBtnPrimaryText: {
       ...typography.bodyStrong,
-      color: colors.textPrimary,
-      textAlign: 'right',
-      writingDirection: 'rtl',
+      color: '#fff',
+      fontSize: 14,
     },
-    trustDesc: {
-      ...typography.caption,
-      color: colors.textSecondary,
-      textAlign: 'right',
-      writingDirection: 'rtl',
+    contactBtnWhatsApp: {
+      flex: 1,
+      ...rtlRow,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: radius.lg,
+      backgroundColor: '#25D366',
+    },
+    contactBtnWhatsAppText: {
+      ...typography.bodyStrong,
+      color: '#fff',
+      fontSize: 14,
     },
 
     // Bottom CTA
@@ -1165,20 +1221,40 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      gap: spacing.md,
+      gap: spacing.sm,
       backgroundColor: colors.bgPrimary,
       borderTopWidth: 1,
       borderTopColor: colors.borderSoft,
     },
-    ctaIcon: {
-      width: 50,
-      height: 50,
-      borderRadius: 25,
-      backgroundColor: colors.bgSurface,
-      borderWidth: 1,
-      borderColor: colors.borderMid,
+    ctaBtnApp: {
+      flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: radius.lg,
+      backgroundColor: colors.electric,
+    },
+    ctaBtnAppText: {
+      ...typography.bodyStrong,
+      color: '#fff',
+      fontSize: 15,
+    },
+    ctaBtnWa: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: radius.lg,
+      backgroundColor: '#25D366',
+    },
+    ctaBtnWaText: {
+      ...typography.bodyStrong,
+      color: '#fff',
+      fontSize: 15,
     },
 
     // ─── Boost Modal ────────────────────────────────────────────────────────

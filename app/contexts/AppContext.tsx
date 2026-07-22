@@ -97,8 +97,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       coverImage: u.coverImage || undefined,
       verified: u.verified ?? false,
       isAI: u.isAI ?? false,
-      followers: u.followersCount ?? 0,
-      following: u.followingCount ?? 0,
+      followers: u.followersCount ?? u.followers ?? 0,
+      following: u.followingCount ?? u.following ?? 0,
+      postsCount: u.postsCount ?? 0,
       rating: typeof u.rating === 'number' ? u.rating : null,
       reviewCount: u.reviewCount ?? 0,
       country: u.country || 'SA',
@@ -257,15 +258,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await Promise.all([fetchUserData(), fetchListings(), fetchPosts()]);
   }, [fetchUserData, fetchListings, fetchPosts]);
 
+  const publicBootstrapped = useRef(false);
+
+  // Public feed — available to guests and logged-in users
+  useEffect(() => {
+    if (publicBootstrapped.current) return;
+    publicBootstrapped.current = true;
+    void Promise.all([fetchPosts(), fetchListings()]);
+  }, [fetchPosts, fetchListings]);
+
   const lastBootstrapKey = useRef<string | null>(null);
 
-  // Load once per auth session (token + user id), not on every callback identity change
+  // User profile + authenticated feed metadata (liked/reposted)
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
       lastBootstrapKey.current = null;
       if (!isAuthenticated) {
-        setPosts([]);
-        setListingsState([]);
+        setMe(DEFAULT_USER);
         setLikedPosts(new Set());
         setRepostedPosts(new Set());
       }
@@ -274,8 +283,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const key = `${accessToken}:${user?.id ?? ''}`;
     if (lastBootstrapKey.current === key) return;
     lastBootstrapKey.current = key;
-    void refetchData();
-  }, [isAuthenticated, accessToken, user?.id, refetchData]);
+    void Promise.all([fetchUserData(), fetchPosts(), fetchListings()]);
+  }, [isAuthenticated, accessToken, user?.id, fetchUserData, fetchPosts, fetchListings]);
 
   const updateMe = useCallback(async (updates: Partial<User>): Promise<ActionResult> => {
     if (!isAuthenticated || !accessToken || !user) {

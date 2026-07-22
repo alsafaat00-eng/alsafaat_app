@@ -167,4 +167,56 @@ export class ListingsRepository {
       return created;
     });
   }
+
+  findActiveListingMeta(id: string) {
+    return this.prisma.listing.findFirst({
+      where: { id, ...notDeleted },
+      select: { id: true, sellerId: true, arabicTitle: true },
+    });
+  }
+
+  findComments(listingId: string) {
+    return this.prisma.listingComment.findMany({
+      where: { listingId },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            arabicName: true,
+            avatar: true,
+            verified: true,
+          },
+        },
+      },
+    });
+  }
+
+  createComment(listingId: string, authorId: string, content: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.listingComment.create({
+        data: { listingId, authorId, content },
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              arabicName: true,
+              avatar: true,
+              verified: true,
+            },
+          },
+        },
+      });
+      await tx.listing.update({
+        where: { id: listingId },
+        data: { commentsCount: { increment: 1 } },
+      });
+      return created;
+    });
+  }
 }

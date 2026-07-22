@@ -22,6 +22,12 @@ function isLoopbackHost(host: string): boolean {
 
 export function resolveDevServiceUrl(envUrl: string | undefined, port: number): string {
   const fromEnv = envUrl?.replace(/\/$/, '');
+
+  // Remote API (Railway / staging) — do not rewrite to LAN/USB localhost.
+  if (fromEnv && /^https:\/\//i.test(fromEnv)) {
+    return fromEnv;
+  }
+
   const expoHost = getExpoDevHost();
 
   // Wi‑Fi dev client: Metro host is the PC LAN IP — API must use the same host.

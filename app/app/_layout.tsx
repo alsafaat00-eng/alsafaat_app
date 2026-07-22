@@ -9,6 +9,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as WebBrowser from 'expo-web-browser';
 import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { OnboardingProvider, useOnboarding } from '@/contexts/OnboardingContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { NotificationManager } from '@/components/NotificationManager';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
@@ -28,26 +29,38 @@ export const unstable_settings = {
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isComplete: onboardingComplete, isLoading: onboardingLoading } = useOnboarding();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || onboardingLoading) return;
 
     if (segments[0] === 'expo-auth-session') return;
 
+    const inOnboarding = (segments[0] as string) === 'onboarding';
     const inAuthGroup = segments[0] === 'auth';
     const inPublicInfo = segments[0] === 'info';
+
+    if (!onboardingComplete && !inOnboarding) {
+      router.replace('/onboarding' as any);
+      return;
+    }
+
+    if (onboardingComplete && inOnboarding) {
+      router.replace(isAuthenticated ? '/(tabs)' : '/auth/phone');
+      return;
+    }
 
     if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)' as any);
       return;
     }
 
-    if (!isAuthenticated && !inAuthGroup && !inPublicInfo) {
+    if (!isAuthenticated && !inAuthGroup && !inPublicInfo && !inOnboarding) {
       router.replace('/auth/phone' as any);
     }
-  }, [isAuthenticated, isLoading, segments, router]);
+  }, [isAuthenticated, isLoading, onboardingComplete, onboardingLoading, segments, router]);
 
   return <>{children}</>;
 }
@@ -91,6 +104,7 @@ function RootNavigator() {
         <Stack.Screen name="settings/account" />
         <Stack.Screen name="settings/info" />
         <Stack.Screen name="settings/support" />
+        <Stack.Screen name="onboarding/index" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="auth/phone" options={{ animation: 'fade' }} />
         <Stack.Screen name="auth/otp" options={{ animation: 'slide_from_left' }} />
         <Stack.Screen name="auth/register" options={{ animation: 'slide_from_left' }} />
@@ -119,15 +133,17 @@ function RootLayoutBody() {
   return (
     <View style={styles.rtlRoot} onLayout={hideSplash}>
       <AuthProvider>
-        <AppProvider>
-          <AuthGuard>
-            <NotificationManager />
-            <SubscriptionProvider>
-              <RootNavigator />
-              <ActionSheetHost />
-            </SubscriptionProvider>
-          </AuthGuard>
-        </AppProvider>
+        <OnboardingProvider>
+          <AppProvider>
+            <AuthGuard>
+              <NotificationManager />
+              <SubscriptionProvider>
+                <RootNavigator />
+                <ActionSheetHost />
+              </SubscriptionProvider>
+            </AuthGuard>
+          </AppProvider>
+        </OnboardingProvider>
       </AuthProvider>
     </View>
   );

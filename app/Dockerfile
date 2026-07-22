@@ -9,8 +9,8 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 COPY . .
 
 # Production Railway API (baked into the web bundle at build time)
-ARG EXPO_PUBLIC_API_URL=https://alsafaatapp-production.up.railway.app
-ARG EXPO_PUBLIC_SOCKET_URL=https://alsafaatapp-production.up.railway.app
+ARG EXPO_PUBLIC_API_URL=https://sarh-app.up.railway.app
+ARG EXPO_PUBLIC_SOCKET_URL=https://sarh-app.up.railway.app
 ARG EXPO_PUBLIC_AGORA_ENABLED=false
 
 ENV EXPO_PUBLIC_API_URL=$EXPO_PUBLIC_API_URL

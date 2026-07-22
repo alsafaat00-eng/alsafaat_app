@@ -258,3 +258,11 @@ export class UpdateListingDto {
   @Type(() => Number)
   weightKg?: number;
 }
+
+export class CreateListingCommentDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  content!: string;
+}

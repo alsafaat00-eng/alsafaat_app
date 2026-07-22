@@ -1,6 +1,7 @@
 const { spawn, execFile } = require('child_process');
 const path = require('path');
 const { networkInterfaces } = require('os');
+const { resolveDevApiUrls } = require('./resolve-dev-api-urls');
 
 const API_PORT = 3001;
 const SOCKET_PORT = 3002;
@@ -211,6 +212,11 @@ async function main() {
   let urls;
   try {
     urls = await setupUsbReverse(state);
+    const remote = resolveDevApiUrls(null);
+    if (remote.mode === 'remote') {
+      urls = { ...urls, apiUrl: remote.apiUrl, socketUrl: remote.socketUrl };
+      console.log('[start:usb] Remote API:', remote.apiUrl);
+    }
   } catch (err) {
     console.error('[start:usb] adb error:', err instanceof Error ? err.message : err);
     process.exit(1);

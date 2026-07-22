@@ -30,6 +30,7 @@ import { requireAuth, sharePost, showPostMenu } from '@/lib/postInteractions';
 import { presentActionSheet } from '@/lib/actionSheet';
 import { fetchStoriesFeed, type StoryGroup } from '@/services/stories';
 import { buildProfileTimeline } from '@/lib/profileTimeline';
+import { ProfileRatingSheet } from '@/components/feature/ProfileRatingSheet';
 
 const COVER_HEIGHT = 130;
 const AVATAR_SIZE = 78;
@@ -53,6 +54,7 @@ export default function ProfileScreen() {
     toggleBookmark,
     deletePost,
     addComment,
+    refetchData,
   } = useApp();
   const { accessToken, isAuthenticated } = useAuth();
 
@@ -60,6 +62,7 @@ export default function ProfileScreen() {
   const [hasStories, setHasStories] = useState(false);
   const [myStoryGroup, setMyStoryGroup] = useState<StoryGroup | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [ratingSheetVisible, setRatingSheetVisible] = useState(false);
 
   const loadStories = useCallback(async () => {
     try {
@@ -80,7 +83,8 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       void loadStories();
-    }, [loadStories]),
+      void refetchData();
+    }, [loadStories, refetchData]),
   );
 
   const myListings = useMemo(
@@ -97,6 +101,7 @@ export default function ProfileScreen() {
   );
 
   const country = getCountryInfo(me.country);
+  const postsCount = me.postsCount ?? myPosts.length;
   const hasRating = me.rating != null && (me.reviewCount ?? 0) > 0;
   const ratingLabel = hasRating ? me.rating!.toFixed(1) : null;
 
@@ -148,9 +153,9 @@ export default function ProfileScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadStories();
+    await Promise.all([loadStories(), refetchData()]);
     setRefreshing(false);
-  }, [loadStories]);
+  }, [loadStories, refetchData]);
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -184,13 +189,17 @@ export default function ProfileScreen() {
             >
               <AppIcon name="menu" size={22} color="#fff" />
             </Pressable>
-            <View style={styles.coverRating}>
+            <Pressable
+              style={styles.coverRating}
+              onPress={() => setRatingSheetVisible(true)}
+              hitSlop={6}
+            >
               <AppIcon name="star" size={12} color={themeColors.gold} />
               <Text style={styles.coverRatingText}>
                 {ratingLabel ?? '—'}
                 {hasRating ? ` (${(me.reviewCount ?? 0).toLocaleString('ar-SA')})` : ''}
               </Text>
-            </View>
+            </Pressable>
           </View>
 
           <View style={styles.avatarOverlap}>
@@ -258,6 +267,10 @@ export default function ProfileScreen() {
                 <Text style={styles.statNum}>{me.following.toLocaleString('en-US')}</Text>
                 <Text style={styles.statLbl}>متابَعون</Text>
               </Pressable>
+              <View style={styles.statItem}>
+                <Text style={styles.statNum}>{postsCount.toLocaleString('en-US')}</Text>
+                <Text style={styles.statLbl}>منشورات</Text>
+              </View>
             </View>
 
             {!!me.bio ? (
@@ -341,6 +354,15 @@ export default function ProfileScreen() {
         onSubmitComment={(content) =>
           commentsPostId ? addComment(commentsPostId, content) : Promise.resolve(false)
         }
+      />
+
+      <ProfileRatingSheet
+        visible={ratingSheetVisible}
+        onClose={() => setRatingSheetVisible(false)}
+        targetName={me.arabicName || me.displayName || me.username}
+        rating={me.rating}
+        reviewCount={me.reviewCount ?? 0}
+        readOnly
       />
     </SafeAreaView>
   );
@@ -497,7 +519,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.xl,
+      gap: spacing.lg,
       marginTop: spacing.sm,
     },
     statItem: {

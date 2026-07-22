@@ -16,6 +16,7 @@ import { successResponse } from '../common/utils/response.util';
 import type { JwtPayload } from '../common/types/jwt-payload.interface';
 import {
   CreateListingDto,
+  CreateListingCommentDto,
   ListListingsQueryDto,
   UpdateListingDto,
 } from './dto/listings.dto';
@@ -46,6 +47,25 @@ export class ListingsController {
   @HttpCode(HttpStatus.OK)
   async getById(@Param('id') id: string) {
     return successResponse(await this.listings.getById(id));
+  }
+
+  @OptionalAuth()
+  @RateLimit('api')
+  @Get(':id/comments')
+  @HttpCode(HttpStatus.OK)
+  async listComments(@Param('id') id: string) {
+    return successResponse(await this.listings.listComments(id));
+  }
+
+  @RateLimit('api')
+  @Post(':id/comments')
+  @HttpCode(HttpStatus.CREATED)
+  async createComment(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: CreateListingCommentDto,
+  ) {
+    return successResponse(await this.listings.createComment(user, id, dto));
   }
 
   @RateLimit('api')

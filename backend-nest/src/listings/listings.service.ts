@@ -9,6 +9,7 @@ import { AppNotificationsService } from '../queue/services/app-notifications.ser
 import type { JwtPayload } from '../common/types/jwt-payload.interface';
 import {
   CreateListingDto,
+  CreateListingCommentDto,
   ListListingsQueryDto,
   UpdateListingDto,
 } from './dto/listings.dto';
@@ -291,5 +292,48 @@ export class ListingsService {
 
     this.logger.info({ listingId: id, userId: user.userId }, 'Listing deleted');
     return { deleted: true };
+  }
+
+  async listComments(listingId: string) {
+    if (!listingId) throwApi(400, 'invalid_id', 'معرّف غير صالح');
+
+    const listing = await this.repo.findActiveListingMeta(listingId);
+    if (!listing) throwApi(404, 'not_found', 'الإعلان غير موجود');
+
+    const comments = await this.repo.findComments(listingId);
+    return { comments };
+  }
+
+  async createComment(
+    user: JwtPayload,
+    listingId: string,
+    dto: CreateListingCommentDto,
+  ) {
+    if (!listingId) throwApi(400, 'invalid_id', 'معرّف غير صالح');
+
+    const listing = await this.repo.findActiveListingMeta(listingId);
+    if (!listing) throwApi(404, 'not_found', 'الإعلان غير موجود');
+
+    const comment = await this.repo.createComment(
+      listingId,
+      user.userId,
+      dto.content,
+    );
+
+    if (listing.sellerId !== user.userId) {
+      void this.notifications
+        .notifyUser({
+          userId: listing.sellerId,
+          type: 'comment',
+          titleAr: 'رد جديد على إعلانك',
+          bodyAr: `علّق ${user.username} على إعلان «${listing.arabicTitle}»`,
+          data: { listingId, commentId: comment.id },
+        })
+        .catch(() => {});
+    }
+
+    await this.cache.del(`listing:${listingId}`);
+    await this.cache.delPattern('listings:v2:*');
+    return comment;
   }
 }

@@ -8,6 +8,8 @@ const fs = require('fs');
 const https = require('https');
 const { networkInterfaces } = require('os');
 
+const { resolveDevApiUrls } = require('./resolve-dev-api-urls');
+
 const API_PORT = 3001;
 const SOCKET_PORT = 3002;
 const EXPO_PORT = process.env.EXPO_PORT || '8081';
@@ -97,8 +99,7 @@ async function main() {
 
   const devClientUrl = buildDevClientUrl(lanIp);
   const expoGoUrl = buildExpoGoUrl(lanIp);
-  const apiUrl = `http://${lanIp}:${API_PORT}`;
-  const socketUrl = `http://${lanIp}:${SOCKET_PORT}`;
+  const { apiUrl, socketUrl, mode } = resolveDevApiUrls(lanIp);
 
   await killPort(EXPO_PORT);
 
@@ -117,7 +118,8 @@ async function main() {
   console.log('  IP:', lanIp);
   console.log('  Dev app (امسح QR):', devClientUrl);
   console.log('  Expo Go (بديل):', expoGoUrl);
-  console.log('  API:', apiUrl);
+  console.log('  API:', apiUrl, mode === 'remote' ? '(Railway)' : '');
+  console.log('  Socket:', socketUrl, mode === 'remote' ? '(Railway)' : '');
   console.log('  DevTools:', `http://localhost:${EXPO_PORT}`);
   console.log('');
   console.log('  1) ثبّت التطبيق أولاً: npm run android');

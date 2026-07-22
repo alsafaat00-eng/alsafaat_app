@@ -10,8 +10,8 @@ COPY . .
 RUN mkdir -p public
 
 # Baked into the Next.js client bundle at build time
-ARG NEXT_PUBLIC_API_URL=https://alsafaatapp-production.up.railway.app
-ARG NEXT_PUBLIC_SOCKET_URL=https://alsafaatapp-production.up.railway.app
+ARG NEXT_PUBLIC_API_URL=https://sarh-app.up.railway.app
+ARG NEXT_PUBLIC_SOCKET_URL=https://sarh-app.up.railway.app
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
 ENV NEXT_TELEMETRY_DISABLED=1

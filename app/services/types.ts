@@ -29,6 +29,7 @@ export interface User {
   isAI?: boolean;
   followers: number;
   following: number;
+  postsCount?: number;
   rating: number | null;
   reviewCount?: number;
   country: Country;

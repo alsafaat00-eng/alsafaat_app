@@ -105,7 +105,6 @@ export function ButchersSidebarEntry() {
           <AppIcon name={rtlForwardIcon} size={18} color={colors.textMuted} />
         </Pressable>
       ))}
-      <View style={styles.sectionDivider} />
     </View>
   );
 }
@@ -115,8 +114,9 @@ function createStyles(colors: ThemeColors) {
     row: {
       ...rtlRow,
       alignItems: 'center',
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      minHeight: 54,
     },
     leading: {
       ...rtlRow,

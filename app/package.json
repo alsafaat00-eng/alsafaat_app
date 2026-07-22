@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node scripts/start-qr.js",
     "start:qr": "node scripts/start-qr.js",
+    "start:railway": "node scripts/start-railway.js",
     "start:usb": "node scripts/start-usb.js",
     "start:lan": "expo start --dev-client --lan --clear",
     "android": "node scripts/run-android-usb.js",

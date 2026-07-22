@@ -339,6 +339,10 @@ export default function UserProfileScreen() {
                 <Text style={styles.statNum}>{profile.followingCount.toLocaleString('en-US')}</Text>
                 <Text style={styles.statLbl}>متابَعون</Text>
               </Pressable>
+              <View style={styles.statItem}>
+                <Text style={styles.statNum}>{profile.postsCount.toLocaleString('en-US')}</Text>
+                <Text style={styles.statLbl}>منشورات</Text>
+              </View>
             </View>
 
             {!!profile.bio ? (

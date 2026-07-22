@@ -51,6 +51,7 @@ model User {
   payments                            Payment[]
   posts                               Post[]
   postComments                        PostComment[]
+  listingComments                     ListingComment[]
   postLikes                           PostLike[]
   postReposts                         PostRepost[]
   stories                             Story[]
@@ -213,6 +214,7 @@ model Listing {
   pinnedUntil       DateTime?
   status            ListingStatus   @default(active)
   views             Int             @default(0)
+  commentsCount     Int             @default(0)
   expiresAt         DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
@@ -222,6 +224,7 @@ model Listing {
   boosts            ListingBoost[]
   offers            ListingOffer[]
   stories           Story[]
+  comments          ListingComment[]
 
   @@index([sellerId])
   @@index([category])
@@ -354,6 +357,18 @@ model PostComment {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId])
+}
+
+model ListingComment {
+  id        String   @id @default(uuid())
+  listingId String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
 }
 
 model Story {
