@@ -13,7 +13,6 @@ import {
   Alert,
   Dimensions,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -29,8 +28,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { rtlBackIcon } from '@/lib/rtl';
 import { useApp } from '@/hooks/useApp';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import { calculateCommission, ListingCategory } from '@/services/commissions';
 import { Country } from '@/services/types';
 import { uploadImageFromUri } from '@/services/upload';
 import { LocationMapPreview } from '@/components/feature/LocationMapPreview';
@@ -79,7 +76,6 @@ export default function CreateListingScreen() {
   const router = useRouter();
   const { addListing } = useApp();
   const { accessToken } = useAuth();
-  const { subscription } = useSubscription();
 
   const [step, setStep] = useState(0);
   const [category, setCategory] = useState<Category | null>(null);
@@ -98,8 +94,6 @@ export default function CreateListingScreen() {
   const [featured, setFeatured] = useState(false);
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [showPledge, setShowPledge] = useState(false);
-  const [pledgeChecked, setPledgeChecked] = useState(false);
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
 
   const selectedCountry = GCC_COUNTRIES.find((c) => c.code === country)!;
@@ -185,15 +179,8 @@ export default function CreateListingScreen() {
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
     } else {
-      // Show pledge modal before final submit
-      setPledgeChecked(false);
-      setShowPledge(true);
+      void handleSubmit();
     }
-  };
-
-  const handlePledgeConfirm = async () => {
-    setShowPledge(false);
-    await handleSubmit();
   };
 
   const handleSubmit = async () => {
@@ -492,38 +479,6 @@ export default function CreateListingScreen() {
                 ) : null}
               </View>
 
-              {/* Commission preview */}
-              {price && category && (
-                <View style={styles.commissionBox}>
-                  <View style={styles.commissionTop}>
-                    <Text style={styles.commissionIcon}>📊</Text>
-                    <Text style={styles.commissionTitle}>رسوم الإعلان المستحقة</Text>
-                  </View>
-                  {(() => {
-                    const calc = calculateCommission(
-                      category as ListingCategory,
-                      Number(price),
-                      1,
-                      subscription.permissions,
-                    );
-                    return (
-                      <View style={styles.commissionDetails}>
-                        <View style={styles.commissionRow}>
-                          <Text style={styles.commissionLabel}>نوع الرسوم</Text>
-                          <Text style={styles.commissionValue}>{calc.descriptionAr}</Text>
-                        </View>
-                        <View style={[styles.commissionRow, styles.commissionHighlight]}>
-                          <Text style={styles.commissionLabelBig}>الرسوم الإجمالية</Text>
-                          <Text style={styles.commissionAmountBig}>{calc.commission} ريال</Text>
-                        </View>
-                        <Text style={styles.commissionNote}>
-                          تُستحق خلال ١٤ يوم من نشر الإعلان · تُسدَّد في قسم سداد الرسوم
-                        </Text>
-                      </View>
-                    );
-                  })()}
-                </View>
-              )}
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>الموقع على الخريطة *</Text>
                 <LocationMapPreview
@@ -663,151 +618,6 @@ export default function CreateListingScreen() {
             </LinearGradient>
           </Pressable>
         </View>
-        <Modal
-          visible={showPledge}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPledge(false)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalSheet}>
-              {/* Header */}
-              <View style={styles.modalHeader}>
-                <View style={styles.pledgeHeaderIcon}>
-                  <AppIcon name="shield-check" size={24} color="#FFFFFF" />
-                </View>
-                <View style={styles.modalHeaderText}>
-                  <Text style={styles.modalTitle}>تعهد نشر الإعلان</Text>
-                  <Text style={styles.modalSubtitle}>الشفافية تحفظ حقوق البائع والمشتري</Text>
-                </View>
-                <Pressable onPress={() => setShowPledge(false)} style={styles.modalCloseBtn} hitSlop={8}>
-                  <AppIcon name="close" size={18} color="#FFFFFF" />
-                </Pressable>
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={styles.modalScroll}
-                contentContainerStyle={styles.modalScrollContent}
-              >
-                <View style={styles.pledgeIntro}>
-                  <AppIcon name="information-circle-outline" size={18} color={colors.electricBright} />
-                  <Text style={styles.pledgeIntroText}>
-                    راجع البنود التالية بعناية. لن يتم نشر الإعلان قبل موافقتك الصريحة.
-                  </Text>
-                </View>
-
-                {/* شروط وسياسة المنصة */}
-                <View style={styles.pledgeCard}>
-                  <View style={styles.pledgeSectionTitleRow}>
-                    <View style={styles.pledgeSectionIcon}>
-                      <AppIcon name="document-text-outline" size={17} color={colors.textBrandStrong} />
-                    </View>
-                    <Text style={styles.pledgeCardTitle}>شروط وسياسة المنصة</Text>
-                  </View>
-                  {[
-                    'أُقرّ المستخدم بأن المعلومات المنشورة صحيحة ومطابقة للواقع.',
-                    'لا يحق نشر إعلانات وهمية أو مضللة أو لحيوانات غير موجودة.',
-                    'يلتزم البائع بالوفاء بالصفقة بعد قبول العرض.',
-                    'تحتفظ المنصة بحق إزالة أي إعلان مخالف دون إشعار.',
-                  ].map((item, i) => (
-                    <View key={i} style={styles.pledgeItemRow}>
-                      <View style={styles.pledgeItemNumber}>
-                        <Text style={styles.pledgeItemNumberText}>{i + 1}</Text>
-                      </View>
-                      <Text style={styles.pledgeItem}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* تعهد السعي / العمولة */}
-                <View style={[styles.pledgeCard, styles.pledgeCardGold]}>
-                  <View style={styles.pledgeSectionTitleRow}>
-                    <View style={[styles.pledgeSectionIcon, styles.pledgeSectionIconGold]}>
-                      <AppIcon name="receipt-outline" size={17} color={colors.gold} />
-                    </View>
-                    <Text style={styles.pledgeCardTitleGold}>تعهد السعي (العمولة)</Text>
-                  </View>
-                  <Text style={styles.pledgeBodyText}>
-                    أتعهد بدفع سعي (عمولة) منصة سرح عند إتمام أي بيع يتم عبر المنصة، وفق النظام التالي:
-                  </Text>
-                  {[
-                    { icon: '🐑', label: 'الأغنام والماعز',              value: '٢٠ ريال / رأس' },
-                    { icon: '🐪', label: 'الإبل',                         value: '٦٠ ريال / رأس' },
-                    { icon: '🐎', label: 'الخيول وباقي الأصناف',          value: '٢٪ من قيمة البيع' },
-                    { icon: '🐄', label: 'الأبقار',                       value: '٢٪ من قيمة البيع' },
-                    { icon: '🦅', label: 'الطيور والصقور',                 value: '٢٪ من قيمة البيع' },
-                    { icon: '🌾', label: 'الأعلاف والمعدات',              value: '٢٪ من قيمة البيع' },
-                    { icon: '🏪', label: 'المتجر والملاحم (بدون اشتراك)', value: '٥٪ من سعر البيع' },
-                    { icon: '🏪', label: 'المتجر والملاحم (بـ اشتراك)',    value: 'صفر عمولة ✅' },
-                  ].map((r, i) => (
-                    <View key={i} style={styles.commRateRow}>
-                      <Text style={styles.commRateValue}>{r.value}</Text>
-                      <Text style={styles.commRateLabel}>{r.label} {r.icon}</Text>
-                    </View>
-                  ))}
-                  <Text style={styles.commDueNote}>
-                    يُستحق السداد خلال <Text style={styles.commDueBold}>7 أيام</Text> من تاريخ إتمام البيع. المتاجر الموثّقة بـ اشتراك مدفوع معفاة من العمولة.
-                  </Text>
-                </View>
-
-                {/* القسم بالله */}
-                <View style={[styles.pledgeCard, styles.pledgeCardBlue]}>
-                  <View style={styles.pledgeSectionTitleRow}>
-                    <View style={[styles.pledgeSectionIcon, styles.pledgeSectionIconBlue]}>
-                      <AppIcon name="shield-check" size={17} color={colors.electricBright} />
-                    </View>
-                    <Text style={styles.pledgeCardTitleBlue}>الإقرار بصحة المعلومات</Text>
-                  </View>
-                  <Text style={styles.pledgeOath}>
-                    «أقسم بالله العظيم أن هذا الإعلان صحيح، وأن ما عرضته مطابق للحقيقة، وأتعهد بدفع سعي المنصة عند البيع وفق نظام العمولة المعتمد.»
-                  </Text>
-                </View>
-
-                {/* Checkbox */}
-                <Pressable
-                  onPress={() => setPledgeChecked((v) => !v)}
-                  style={[styles.checkboxRow, pledgeChecked && styles.checkboxRowActive]}
-                >
-                  <View style={[styles.checkbox, pledgeChecked && styles.checkboxChecked]}>
-                    {pledgeChecked && <AppIcon name="check" size={13} color="#FFFFFF" />}
-                  </View>
-                  <Text style={styles.checkboxText}>
-                    أقر بأنني قرأت وفهمت جميع الشروط، وأتعهد بدفع السعي (العمولة) وفق نظام سوق سرح عند إتمام أي بيع، وأقسم بالله على صحة المعلومات.
-                  </Text>
-                </Pressable>
-
-                <View style={{ height: 16 }} />
-              </ScrollView>
-
-              {/* Buttons */}
-              <View style={styles.modalBtns}>
-                <Pressable
-                  style={[styles.modalConfirmBtn, !pledgeChecked && styles.modalConfirmBtnDisabled]}
-                  onPress={handlePledgeConfirm}
-                  disabled={!pledgeChecked}
-                >
-                  <LinearGradient
-                    colors={pledgeChecked ? gradients.royal : [colors.bgSurface, colors.bgSurface]}
-                    style={styles.modalConfirmGradient}
-                  >
-                    <AppIcon
-                      name="shield-check"
-                      size={18}
-                      color={pledgeChecked ? '#FFFFFF' : colors.textMuted}
-                    />
-                    <Text style={[styles.modalConfirmText, !pledgeChecked && { color: colors.textMuted }]}>
-                      أوافق وأتابع النشر
-                    </Text>
-                  </LinearGradient>
-                </Pressable>
-                <Pressable style={styles.modalCancelBtn} onPress={() => setShowPledge(false)}>
-                  <Text style={styles.modalCancelText}>إلغاء</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
 
         <PublishSuccessModal
           visible={showPublishSuccess}
@@ -992,170 +802,5 @@ function createStyles(colors: ThemeColors) {
     paddingVertical: spacing.md, alignItems: 'center', borderRadius: radius.xl,
   },
   continueBtnText: { ...typography.h3, color: '#fff' },
-
-  // Commission preview
-  commissionBox: {
-    padding: spacing.md, borderRadius: radius.lg,
-    backgroundColor: `${colors.electric}08`,
-    borderWidth: 1, borderColor: `${colors.electric}25`,
-    gap: spacing.sm,
-  },
-  commissionTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  commissionIcon: { fontSize: 16 },
-  commissionTitle: { ...typography.caption, color: colors.textBrandStrong, fontWeight: '700' },
-  commissionDetails: { gap: spacing.sm },
-  commissionRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 4,
-  },
-  commissionHighlight: {
-    paddingVertical: spacing.sm, paddingHorizontal: spacing.sm,
-    backgroundColor: `${colors.electric}12`, borderRadius: radius.md,
-    marginTop: 2,
-  },
-  commissionLabel: { ...typography.caption, color: colors.textMuted },
-  commissionValue: { ...typography.caption, color: colors.textSecondary, textAlign: 'right' },
-  commissionLabelBig: { ...typography.body, color: colors.textPrimary, fontWeight: '600' },
-  commissionAmountBig: { fontSize: 20, fontWeight: '800', color: colors.gold },
-  commissionNote: { ...typography.micro, color: colors.textSubtle, textAlign: 'right', lineHeight: 16 },
-
-  // ─── Pledge Modal Styles ───────────────────────────────────────────────────
-  modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(5,10,18,0.68)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: colors.bgPrimary,
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.borderSoft,
-    maxHeight: '94%',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md,
-    backgroundColor: colors.electric,
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-  },
-  pledgeHeaderIcon: {
-    width: 42, height: 42, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  modalCloseBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  modalHeaderText: { flex: 1, alignItems: 'flex-end' },
-  modalTitle: { ...typography.h3, color: '#fff', fontWeight: '800' },
-  modalSubtitle: { ...typography.caption, color: 'rgba(255,255,255,0.78)', marginTop: 2 },
-  modalScroll: { paddingHorizontal: spacing.lg },
-  modalScrollContent: { paddingBottom: spacing.md },
-  pledgeIntro: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
-    padding: spacing.md, marginTop: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: `${colors.electric}0D`,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${colors.electric}35`,
-  },
-  pledgeIntroText: {
-    flex: 1, ...typography.caption, color: colors.textSecondary,
-    lineHeight: 20, textAlign: 'right',
-  },
-  pledgeCard: {
-    backgroundColor: colors.bgSurface, borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.borderSoft,
-    padding: spacing.lg, marginTop: spacing.md, gap: spacing.md,
-  },
-  pledgeCardGold: {
-    backgroundColor: `${colors.gold}08`,
-    borderColor: `${colors.gold}40`,
-  },
-  pledgeCardBlue: {
-    backgroundColor: `${colors.electric}08`,
-    borderColor: `${colors.electric}40`,
-  },
-  pledgeSectionTitleRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-  },
-  pledgeSectionIcon: {
-    width: 32, height: 32, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: `${colors.electric}12`,
-  },
-  pledgeSectionIconGold: { backgroundColor: `${colors.gold}14` },
-  pledgeSectionIconBlue: { backgroundColor: `${colors.electricBright}12` },
-  pledgeCardTitle: { ...typography.bodyStrong, color: colors.textBrandStrong, textAlign: 'right' },
-  pledgeCardTitleGold: { ...typography.bodyStrong, color: colors.gold, textAlign: 'right' },
-  pledgeCardTitleBlue: { ...typography.bodyStrong, color: colors.textBrand, textAlign: 'right' },
-  pledgeItemRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
-  },
-  pledgeItemNumber: {
-    width: 24, height: 24, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: `${colors.electric}12`, flexShrink: 0,
-  },
-  pledgeItemNumberText: {
-    ...typography.micro, color: colors.textBrandStrong, fontWeight: '800',
-  },
-  pledgeItem: {
-    flex: 1, ...typography.body, color: colors.textSecondary,
-    lineHeight: 24, textAlign: 'right',
-  },
-  pledgeBodyText: { ...typography.body, color: colors.textSecondary, lineHeight: 22, textAlign: 'right' },
-  commRateRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: `${colors.gold}20`,
-  },
-  commRateLabel: { ...typography.body, color: colors.textSecondary, textAlign: 'right' },
-  commRateValue: { ...typography.bodyStrong, color: colors.gold },
-  commDueNote: { ...typography.caption, color: colors.textMuted, textAlign: 'right', marginTop: spacing.sm },
-  commDueBold: { color: colors.rose, fontWeight: '700' },
-  pledgeOath: {
-    ...typography.body, color: colors.textPrimary,
-    lineHeight: 27, textAlign: 'center',
-    paddingVertical: spacing.sm, paddingHorizontal: spacing.sm,
-  },
-  checkboxRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md,
-    backgroundColor: colors.bgSurface, borderRadius: radius.lg,
-    borderWidth: 1.5, borderColor: colors.borderSoft,
-    padding: spacing.md, marginTop: spacing.md,
-  },
-  checkboxRowActive: { borderColor: colors.electric, backgroundColor: `${colors.electric}0D` },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 6,
-    borderWidth: 2, borderColor: colors.borderMid,
-    backgroundColor: colors.bgElevated,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0, marginTop: 2,
-  },
-  checkboxChecked: { backgroundColor: colors.electric, borderColor: colors.electric },
-  checkboxText: { flex: 1, ...typography.body, color: colors.textSecondary, lineHeight: 22, textAlign: 'right' },
-  modalBtns: {
-    flexDirection: 'row', gap: spacing.md,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg,
-    borderTopWidth: 1, borderTopColor: colors.borderSoft,
-    backgroundColor: colors.bgPrimary,
-  },
-  modalConfirmBtn: {
-    flex: 2, borderRadius: radius.xl, overflow: 'hidden',
-  },
-  modalConfirmGradient: {
-    minHeight: 52, paddingHorizontal: spacing.lg,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.sm, borderRadius: radius.xl,
-  },
-  modalConfirmBtnDisabled: { opacity: 0.65 },
-  modalConfirmText: { ...typography.bodyStrong, color: '#fff' },
-  modalCancelBtn: {
-    flex: 1, backgroundColor: colors.bgSurface, borderRadius: radius.xl,
-    paddingVertical: spacing.lg, alignItems: 'center',
-    borderWidth: 1, borderColor: colors.borderSoft,
-  },
-  modalCancelText: { ...typography.bodyStrong, color: colors.textSecondary },
   });
 }

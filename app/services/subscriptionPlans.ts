@@ -50,6 +50,9 @@ export const PLAN_DESC_AR: Record<string, string> = {
   growth: 'باقة النمو للملاحم والمتاجر الموثّقة',
 };
 
+/** Plan features hidden from user-facing UI */
+export const HIDDEN_PLAN_FEATURE_KEYS = new Set(['storeCommission']);
+
 export const FEATURE_LABELS_AR: Record<string, string> = {
   maxAdsPer24Hours: 'الحد الأقصى للإعلانات يومياً',
   monthlyFeaturedAds: 'إعلانات مميزة شهرياً',
@@ -99,7 +102,9 @@ export function localizePlan(plan: SubscriptionPlan): SubscriptionPlan {
     ...plan,
     name: planDisplayName(slug, plan.name),
     description: PLAN_DESC_AR[slug] ?? plan.description,
-    displayFeatures: (plan.displayFeatures ?? []).map((f) => ({
+    displayFeatures: (plan.displayFeatures ?? [])
+      .filter((f) => !HIDDEN_PLAN_FEATURE_KEYS.has(f.key))
+      .map((f) => ({
       ...f,
       label: featureLabel(f.key, f.label),
     })),

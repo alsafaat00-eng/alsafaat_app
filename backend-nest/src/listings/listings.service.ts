@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { calculateCommission, type ListingCat } from '../lib/commissions';
+import { calculateCommission, shouldCreateFee, type ListingCat } from '../lib/commissions';
 import { throwApi } from '../common/exceptions/api.exception';
 import { LoggerService } from '../common/services/logger.service';
 import { RedisCacheService } from '../redis/services/redis-cache.service';
@@ -156,12 +156,19 @@ export class ListingsService {
     );
 
     const permissions = await this.entitlements.getPermissionsForUser(user.userId);
+    const audience = await this.entitlements.getAudienceForUser(user.userId);
 
     const { commission, dueDate } = calculateCommission(
       dto.category as ListingCat,
       dto.price,
       quantity,
       permissions,
+      audience,
+    );
+    const createFee = shouldCreateFee(
+      dto.category as ListingCat,
+      permissions,
+      audience,
     );
 
     this.assertWeightForCategory(dto.category, dto.weightKg);
@@ -170,6 +177,7 @@ export class ListingsService {
       const listing = await this.repo.createListingWithFee({
         userId: user.userId,
         featured,
+        createFee,
         data: {
           title: dto.title,
           arabicTitle: dto.arabicTitle,
@@ -196,23 +204,33 @@ export class ListingsService {
         price: dto.price,
       });
 
-      const delayMs = dueDate.getTime() - Date.now() + 60_000;
-      await this.feeCheckQueue.scheduleFeeCheck(
-        {
-          listingFeeId: listing.fee!.id,
-          userId: user.userId,
-          amount: commission,
-        },
-        delayMs,
-      );
+      if (createFee && listing.fee) {
+        const delayMs = dueDate.getTime() - Date.now() + 60_000;
+        await this.feeCheckQueue.scheduleFeeCheck(
+          {
+            listingFeeId: listing.fee.id,
+            userId: user.userId,
+            amount: commission,
+          },
+          delayMs,
+        );
 
-      await this.notifications.notifyUser({
-        userId: user.userId,
-        type: 'fee_due',
-        titleAr: '✅ تم نشر إعلانك',
-        bodyAr: `إعلانك "${dto.arabicTitle}" منشور. الرسوم: ${commission} ريال خلال ١٤ يوم.`,
-        data: { listingId: listing.id, feeId: listing.fee!.id },
-      });
+        await this.notifications.notifyUser({
+          userId: user.userId,
+          type: 'fee_due',
+          titleAr: '✅ تم نشر إعلانك',
+          bodyAr: `إعلانك "${dto.arabicTitle}" منشور. الرسوم: ${commission} ريال خلال ٧ أيام.`,
+          data: { listingId: listing.id, feeId: listing.fee.id },
+        });
+      } else {
+        await this.notifications.notifyUser({
+          userId: user.userId,
+          type: 'system',
+          titleAr: '✅ تم نشر إعلانك',
+          bodyAr: `إعلانك "${dto.arabicTitle}" منشور بنجاح.`,
+          data: { listingId: listing.id },
+        });
+      }
 
       await this.cache.delPattern('listings:v2:*');
 

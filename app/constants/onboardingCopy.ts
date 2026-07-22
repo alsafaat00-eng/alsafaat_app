@@ -13,7 +13,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     id: 'features',
     title: 'كل ما تحتاجه في سرح',
-    description: 'مواشي • ملاحم • أعلاف • خدمات\nبيع وشراء بدون عمولة.',
+    description: 'مواشي • ملاحم • أعلاف • خدمات\nمنصة موثوقة للبيع والشراء.',
   },
   {
     id: 'explore',

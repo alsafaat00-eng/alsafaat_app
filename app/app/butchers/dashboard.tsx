@@ -173,7 +173,7 @@ export default function ButcherDashboardScreen() {
       icon: 'shield-checkmark-outline',
       label: 'إدارة الاشتراك',
       color: colors.gold,
-      onPress: () => router.push('/fees'),
+      onPress: () => router.push('/subscription'),
     },
   ];
 
@@ -201,10 +201,10 @@ export default function ButcherDashboardScreen() {
         <AppIcon name="shield-checkmark" size={16} color={colors.gold} />
         <Text style={s.verifiedStripText}>
           {data.butcher.subscriptionActive
-            ? 'حساب موثّق نشط · معفى من العمولات تماماً'
-            : 'حساب ملحمة عادي · ترقية الحساب متاحة الآن'}
+            ? 'حساب موثّق نشط · مزايا الباقة مفعّلة'
+            : 'حساب ملحمة · ترقية الحساب متاحة الآن'}
         </Text>
-        <Pressable onPress={() => router.push('/fees')} style={s.manageBtn}>
+        <Pressable onPress={() => router.push('/subscription')} style={s.manageBtn}>
           <Text style={s.manageBtnText}>{data.butcher.subscriptionActive ? 'إدارة' : 'ترقية'}</Text>
         </Pressable>
       </View>

@@ -55,23 +55,32 @@ export function calculateCommission(
   price: number,
   quantity = 1,
   permissions?: PlanPermissions,
+  audience: 'USER' | 'BUTCHER' = 'USER',
 ): CommissionResult {
-  const rule = RULES[category] ?? RULES.equipment;
-  const isExempt = category === 'store' && isStoreExemptFromPermissions(permissions);
+  const noFee = {
+    commission: 0,
+    isExempt: true,
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    ruleDescription: 'لا رسوم',
+  };
+
+  // Commission applies only to non-subscribed butchers (store sales).
+  if (audience !== 'BUTCHER' || category !== 'store') {
+    return { ...noFee, ruleDescription: 'لا رسوم على إعلانات المواشي والمعدات' };
+  }
+
+  const rule = RULES.store;
+  const isExempt = isStoreExemptFromPermissions(permissions);
 
   let commission = 0;
   let ruleDescription = '';
 
   if (isExempt) {
-    ruleDescription = 'صفر عمولة — متجر بـ اشتراك مدفوع';
-  } else if (rule.type === 'fixed') {
-    commission = rule.value * quantity;
-    ruleDescription = `${rule.value} ريال × ${quantity} رأس = ${commission} ريال`;
-  } else if (rule.type === 'percent' || rule.type === 'by_plan') {
-    const rate =
-      category === 'store' && permissions
-        ? permissionNumber(permissions, 'storeCommission', rule.value)
-        : rule.value;
+    ruleDescription = 'صفر عمولة — ملحمة باشتراك مدفوع';
+  } else {
+    const rate = permissions
+      ? permissionNumber(permissions, 'storeCommission', rule.value)
+      : rule.value;
     commission = Math.ceil((price * rate) / 100);
     ruleDescription = `${rate}% × ${price.toLocaleString('ar-SA')} ريال = ${commission} ريال`;
   }
@@ -87,88 +96,27 @@ export function calculateCommission(
 export function shouldCreateFee(
   category: ListingCat,
   permissions?: PlanPermissions,
+  audience: 'USER' | 'BUTCHER' = 'USER',
 ): boolean {
-  if (category === 'store' && isStoreExemptFromPermissions(permissions)) return false;
+  if (audience !== 'BUTCHER') return false;
+  if (category !== 'store') return false;
+  if (isStoreExemptFromPermissions(permissions)) return false;
   return true;
 }
 
 export const COMMISSION_TABLE = [
   {
-    icon: '🐑',
-    nameAr: 'الأغنام',
-    nameEn: 'Sheep',
-    ruleAr: '٢٠ ريال / رأس',
-    ruleEn: '20 SAR/head',
-    color: '#10B981',
-  },
-  {
-    icon: '🐐',
-    nameAr: 'الماعز',
-    nameEn: 'Goats',
-    ruleAr: '٢٠ ريال / رأس',
-    ruleEn: '20 SAR/head',
-    color: '#10B981',
-  },
-  {
-    icon: '🐪',
-    nameAr: 'الإبل',
-    nameEn: 'Camels',
-    ruleAr: '٦٠ ريال / رأس',
-    ruleEn: '60 SAR/head',
-    color: '#F5C56A',
-  },
-  {
-    icon: '🐎',
-    nameAr: 'الخيول',
-    nameEn: 'Horses',
-    ruleAr: '٢٪ من سعر الإعلان',
-    ruleEn: '2% of price',
-    color: '#3B82F6',
-  },
-  {
-    icon: '🐄',
-    nameAr: 'الأبقار',
-    nameEn: 'Cattle',
-    ruleAr: '٢٪ من سعر الإعلان',
-    ruleEn: '2% of price',
-    color: '#3B82F6',
-  },
-  {
-    icon: '🦅',
-    nameAr: 'الطيور والصقور',
-    nameEn: 'Birds & Falcons',
-    ruleAr: '٢٪ من سعر الإعلان',
-    ruleEn: '2% of price',
-    color: '#3B82F6',
-  },
-  {
-    icon: '🌾',
-    nameAr: 'الأعلاف والمؤن',
-    nameEn: 'Feed & Fodder',
-    ruleAr: '٢٪ من سعر الإعلان',
-    ruleEn: '2% of price',
-    color: '#3B82F6',
-  },
-  {
-    icon: '⚙️',
-    nameAr: 'المعدات والأدوات',
-    nameEn: 'Equipment & Tools',
-    ruleAr: '٢٪ من سعر الإعلان',
-    ruleEn: '2% of price',
-    color: '#3B82F6',
-  },
-  {
     icon: '🏪',
-    nameAr: 'متجر / ملحمة (بدون اشتراك)',
-    nameEn: 'Store / Butcher (no sub)',
+    nameAr: 'ملحمة (بدون اشتراك)',
+    nameEn: 'Butcher (no subscription)',
     ruleAr: '٥٪ من سعر البيع',
     ruleEn: '5% of sale',
     color: '#A855F7',
   },
   {
     icon: '✅',
-    nameAr: 'متجر / ملحمة (بـ اشتراك)',
-    nameEn: 'Store / Butcher (subscribed)',
+    nameAr: 'ملحمة (باشتراك)',
+    nameEn: 'Butcher (subscribed)',
     ruleAr: 'صفر عمولة',
     ruleEn: 'Zero commission',
     color: '#10B981',

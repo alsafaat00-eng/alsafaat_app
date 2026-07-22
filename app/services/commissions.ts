@@ -169,24 +169,40 @@ export function calculateCommission(
   quantity: number = 1,
   permissions?: Record<string, unknown>,
 ): CommissionCalcResult {
-  const rule = COMMISSION_RULES.find((r) => r.category === category)
-    ?? COMMISSION_RULES.find((r) => r.category === 'equipment')!;
+  // Regular listings are free — commission applies to store/butcher only.
+  if (category !== 'store') {
+    return {
+      category,
+      ruleNameAr: 'إعلان عادي',
+      type: 'fixed',
+      value: 0,
+      unit: 'per_head',
+      quantity,
+      price,
+      commission: 0,
+      netAfterCommission: price,
+      descriptionAr: 'لا رسوم على إعلانات المواشي والمعدات',
+      isExempt: true,
+    };
+  }
+
+  const rule = COMMISSION_RULES.find((r) => r.category === 'store')!;
 
   let commission = 0;
 
-  const isExempt = category === 'store' && isStoreExempt(permissions);
+  const isExempt = isStoreExempt(permissions);
 
   if (!isExempt) {
-    if (rule.type === 'fixed') {
-      commission = rule.value * quantity;
-    } else if (rule.type === 'percentage' || rule.type === 'exempt_if_subscribed') {
-      commission = Math.ceil((price * rule.value) / 100);
-    }
+    const rate =
+      typeof permissions?.storeCommission === 'number'
+        ? (permissions.storeCommission as number)
+        : rule.value;
+    commission = Math.ceil((price * rate) / 100);
   }
 
   const displayDesc = isExempt
-    ? 'صفر عمولة — متجر موثّق باشتراك مدفوع ✅'
-    : rule.descriptionAr;
+    ? 'صفر عمولة — ملحمة باشتراك مدفوع ✅'
+    : `${rule.value}% من سعر البيع`;
 
   return {
     category,
@@ -199,7 +215,6 @@ export function calculateCommission(
     commission,
     netAfterCommission: price - commission,
     descriptionAr: displayDesc,
-
     isExempt,
   };
 }
@@ -217,17 +232,8 @@ export interface CommissionTableRow {
 }
 
 export const COMMISSION_TABLE: CommissionTableRow[] = [
-  { icon: '🐑', nameAr: 'الأغنام', nameEn: 'Sheep', ruleAr: '٢٠ ريال / رأس', ruleEn: '20 SAR/head', color: '#10B981' },
-  { icon: '🐐', nameAr: 'الماعز', nameEn: 'Goats', ruleAr: '٢٠ ريال / رأس', ruleEn: '20 SAR/head', color: '#10B981' },
-  { icon: '🐪', nameAr: 'الإبل', nameEn: 'Camels', ruleAr: '٦٠ ريال / رأس', ruleEn: '60 SAR/head', color: '#F5C56A' },
-  { icon: '🐎', nameAr: 'الخيول', nameEn: 'Horses', ruleAr: '٢٪ من سعر الإعلان', ruleEn: '2% of price', color: '#3B82F6' },
-  { icon: '🐄', nameAr: 'الأبقار', nameEn: 'Cattle', ruleAr: '٢٪ من سعر الإعلان', ruleEn: '2% of price', color: '#3B82F6' },
-  { icon: '🦅', nameAr: 'الطيور والصقور', nameEn: 'Birds & Falcons', ruleAr: '٢٪ من سعر الإعلان', ruleEn: '2% of price', color: '#3B82F6' },
-  { icon: '🌾', nameAr: 'الأعلاف والمؤن', nameEn: 'Feed & Fodder', ruleAr: '٢٪ من سعر الإعلان', ruleEn: '2% of price', color: '#3B82F6' },
-  { icon: '⚙️', nameAr: 'المعدات والأدوات', nameEn: 'Equipment', ruleAr: '٢٪ من سعر الإعلان', ruleEn: '2% of price', color: '#3B82F6' },
-  { icon: '🥩', nameAr: 'الملاحم', nameEn: 'Butcher Shops', ruleAr: 'على الطلب', ruleEn: 'On request', color: '#EF4444', note: 'يُحدَّد حسب الاتفاق' },
-  { icon: '🏪', nameAr: 'متجر / ملحمة (بدون اشتراك)', nameEn: 'Store / Butcher (no sub)', ruleAr: '٥٪ من سعر البيع', ruleEn: '5% of sale', color: '#A855F7' },
-  { icon: '🏪✅', nameAr: 'متجر / ملحمة (بـ اشتراك)', nameEn: 'Store / Butcher (subscribed)', ruleAr: 'صفر عمولة', ruleEn: 'Zero commission', color: '#10B981', note: 'Starter أو Pro أو VIP' },
+  { icon: '🏪', nameAr: 'ملحمة (بدون اشتراك)', nameEn: 'Butcher (no sub)', ruleAr: '٥٪ من سعر البيع', ruleEn: '5% of sale', color: '#A855F7' },
+  { icon: '🏪✅', nameAr: 'ملحمة (باشتراك)', nameEn: 'Butcher (subscribed)', ruleAr: 'صفر عمولة', ruleEn: 'Zero commission', color: '#10B981', note: 'باقة Growth أو أعلى' },
 ];
 
 // ─── نماذج رسوم تجريبية ──────────────────────────────────────────────────────

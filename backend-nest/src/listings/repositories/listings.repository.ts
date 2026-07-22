@@ -100,6 +100,7 @@ export class ListingsRepository {
     userId: string;
     featured: boolean;
     pinned?: boolean;
+    createFee?: boolean;
     data: Omit<Prisma.ListingUncheckedCreateInput, 'sellerId'>;
     commission: number;
     dueDate: Date;
@@ -133,17 +134,21 @@ export class ListingsRepository {
         data: {
           ...params.data,
           sellerId: params.userId,
-          fee: {
-            create: {
-              userId: params.userId,
-              category: params.category,
-              quantity: params.quantity,
-              price: params.price,
-              commission: params.commission,
-              dueDate: params.dueDate,
-              status: 'pending',
-            },
-          },
+          ...(params.createFee
+            ? {
+                fee: {
+                  create: {
+                    userId: params.userId,
+                    category: params.category,
+                    quantity: params.quantity,
+                    price: params.price,
+                    commission: params.commission,
+                    dueDate: params.dueDate,
+                    status: 'pending',
+                  },
+                },
+              }
+            : {}),
         },
         include: {
           seller: {

@@ -7,7 +7,7 @@ const ITEMS: SettingsMenuItem[] = [
   {
     icon: 'person-outline',
     label: 'إدارة الملف الشخصي',
-    subtitle: 'الصورة، الاسم، والنبذة',
+    subtitle: 'الصورة، الاسم، النبذة، والخصوصية',
     route: '/profile/edit',
   },
   {
@@ -15,12 +15,6 @@ const ITEMS: SettingsMenuItem[] = [
     label: 'تغيير كلمة المرور',
     subtitle: 'تحديث بيانات الدخول بأمان',
     route: '/profile/settings/password',
-  },
-  {
-    icon: 'person-circle-outline',
-    label: 'تعديل المعلومات الشخصية',
-    subtitle: 'الاسم، الموقع، وبيانات التواصل',
-    route: '/profile/edit',
   },
   {
     icon: 'bell-outline',
@@ -33,12 +27,6 @@ const ITEMS: SettingsMenuItem[] = [
     label: 'الخصوصية',
     subtitle: 'من يرى ملفك وكيف تُستخدم بياناتك',
     route: '/info/privacy',
-  },
-  {
-    icon: 'shield-check-outline',
-    label: 'الأمان',
-    subtitle: 'حماية الحساب والجلسات النشطة',
-    route: '/profile/settings/password',
   },
   {
     icon: 'lifebuoy',

@@ -83,10 +83,6 @@ export function FeaturesSlideVisual({ fadeAnim, slideAnim }: SlideVisualProps) {
           </GlassCard>
         ))}
       </View>
-      <View style={styles.commissionPill}>
-        <AppIcon name="badge-check" size={16} color={colors.glow} />
-        <Text style={styles.commissionText}>بيع وشراء بدون عمولة</Text>
-      </View>
     </Animated.View>
   );
 }

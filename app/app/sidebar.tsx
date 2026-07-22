@@ -31,14 +31,6 @@ type MenuItem = {
   danger?: boolean;
 };
 
-type QuickAction = {
-  key: string;
-  icon: string;
-  label: string;
-  route: string;
-  tint: string;
-};
-
 function SidebarMenuRow({
   item,
   colors,
@@ -92,37 +84,6 @@ function SidebarMenuRow({
   );
 }
 
-function QuickActionChip({
-  action,
-  colors,
-  onPress,
-}: {
-  action: QuickAction;
-  colors: ThemeColors;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        chipStyles.chip,
-        {
-          backgroundColor: colors.bgGlass,
-          borderColor: colors.borderSoft,
-          opacity: pressed ? 0.82 : 1,
-        },
-      ]}
-    >
-      <View style={[chipStyles.iconWrap, { backgroundColor: action.tint }]}>
-        <AppIcon name={action.icon} size={18} color={colors.textBrandStrong} />
-      </View>
-      <Text style={[chipStyles.label, { color: colors.textPrimary }]} numberOfLines={1}>
-        {action.label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const rowStyles = StyleSheet.create({
   row: {
     ...rtlRow,
@@ -156,27 +117,6 @@ const rowStyles = StyleSheet.create({
   },
   label: { ...typography.bodyStrong, fontSize: 15 },
   subtitle: { ...typography.caption },
-});
-
-const chipStyles = StyleSheet.create({
-  chip: {
-    width: '48%',
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.sm,
-    gap: spacing.sm,
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    ...typography.caption,
-    fontWeight: '700',
-  },
 });
 
 export default function SidebarScreen() {
@@ -217,13 +157,6 @@ export default function SidebarScreen() {
     const next = preference === 'light' ? 'dark' : preference === 'dark' ? 'system' : 'light';
     setPreference(next);
   };
-
-  const quickActions: QuickAction[] = [
-    { key: 'market', icon: 'storefront-outline', label: 'السوق', route: '/(tabs)/market', tint: `${colors.electric}18` },
-    { key: 'posts', icon: 'document-text-outline', label: 'المنشورات', route: '/(tabs)/posts', tint: `${colors.cyan}18` },
-    { key: 'search', icon: 'search-outline', label: 'البحث', route: '/search', tint: `${colors.gold}18` },
-    { key: 'profile', icon: 'person-outline', label: 'حسابي', route: '/(tabs)/profile', tint: `${colors.emerald}18` },
-  ];
 
   return (
     <View style={[styles.backdrop, rtlRow]}>
@@ -285,18 +218,6 @@ export default function SidebarScreen() {
             </View>
           </Pressable>
 
-          <Text style={styles.sectionLabel}>اختصارات</Text>
-          <View style={styles.quickGrid}>
-            {quickActions.map((action) => (
-              <QuickActionChip
-                key={action.key}
-                action={action}
-                colors={colors}
-                onPress={() => handleNav(action.route)}
-              />
-            ))}
-          </View>
-
           <Text style={styles.sectionLabel}>الخدمات</Text>
           <View style={styles.menuCard}>
             <ButchersSidebarEntry />
@@ -311,12 +232,6 @@ export default function SidebarScreen() {
               colors={colors}
               showDivider
               onPress={() => handleNav('/(tabs)/messages')}
-            />
-            <SidebarMenuRow
-              item={{ key: 'fees', icon: 'receipt-outline', label: 'سداد الرسوم' }}
-              colors={colors}
-              showDivider
-              onPress={() => handleNav('/fees')}
             />
             <SidebarMenuRow
               item={{ key: 'subscription', icon: 'crown-outline', label: 'الباقات والاشتراك' }}
@@ -505,13 +420,6 @@ function createSidebarStyles(colors: ThemeColors, scheme: 'light' | 'dark') {
       marginTop: spacing.sm,
       marginBottom: 2,
       paddingHorizontal: spacing.xs,
-    },
-    quickGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: spacing.sm,
-      marginBottom: spacing.xs,
     },
     menuCard: {
       borderRadius: 18,

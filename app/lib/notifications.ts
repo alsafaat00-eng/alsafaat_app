@@ -356,7 +356,7 @@ export function handleNotificationNavigation(
         } as never);
         return true;
       }
-      ctx.router.push('/fees' as never);
+      ctx.router.push('/subscription' as never);
       return true;
 
     case 'subscription_renew':
@@ -402,7 +402,7 @@ export function handleNotificationNavigation(
     case 'system':
       if (postId) return navigateToPost(ctx, postId);
       if (paymentId) {
-        ctx.router.push('/fees' as never);
+        ctx.router.push('/subscription' as never);
         return true;
       }
       if (ctx.isAdmin && applicationId) {

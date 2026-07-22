@@ -32,16 +32,16 @@ const CONTEXT_COPY: Record<PaymentContext, ContextCopy> = {
     secondaryLabel: 'عرض الباقات',
   },
   listing_fee: {
-    successTitle: 'تم سداد رسوم الإعلان',
-    successSubtitle: 'تم تأكيد الدفع وتحديث حالة رسوم إعلانك.',
-    pendingSubtitle: 'إذا أكملت الدفع، ستُحدَّث الرسوم تلقائياً.',
-    primaryLabel: 'صفحة الرسوم',
+    successTitle: 'تم الدفع بنجاح',
+    successSubtitle: 'تم تأكيد عملية الدفع.',
+    pendingSubtitle: 'إذا أكملت الدفع، سيُحدَّث الطلب تلقائياً.',
+    primaryLabel: 'الاشتراك',
   },
   commission: {
-    successTitle: 'تم سداد الرسوم',
+    successTitle: 'تم الدفع بنجاح',
     successSubtitle: 'شكراً لك — تم تسجيل عملية الدفع بنجاح.',
     pendingSubtitle: 'إذا أكملت الدفع، سيظهر في السجل خلال لحظات.',
-    primaryLabel: 'صفحة الرسوم',
+    primaryLabel: 'الاشتراك',
   },
   boost: {
     successTitle: 'تم تفعيل الترقية!',
@@ -61,7 +61,7 @@ const CONTEXT_COPY: Record<PaymentContext, ContextCopy> = {
     successSubtitle: 'تم تأكيد عملية الدفع.',
     pendingSubtitle: 'إذا أكملت الدفع، سيُحدَّث طلبك خلال لحظات.',
     primaryLabel: 'الملف الشخصي',
-    secondaryLabel: 'صفحة الرسوم',
+    secondaryLabel: 'عرض الباقات',
   },
 };
 
@@ -141,7 +141,7 @@ export default function PaymentResultScreen() {
         break;
       case 'listing_fee':
       case 'commission':
-        router.replace('/fees' as never);
+        router.replace('/subscription' as never);
         break;
       case 'boost':
         if (listingId) {
@@ -175,7 +175,7 @@ export default function PaymentResultScreen() {
       router.replace('/butchers' as never);
       return;
     }
-    router.replace('/fees' as never);
+    router.replace('/subscription' as never);
   }, [context, router]);
 
   if (syncState === 'syncing') {
