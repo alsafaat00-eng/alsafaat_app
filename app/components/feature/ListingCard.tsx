@@ -86,14 +86,17 @@ function ListingCardInner({ listing, onPress, variant = 'grid', compact = false 
       >
         {/* المحتوى يمين (بداية RTL) ثم الصورة يسار */}
         <View style={styles.listContent}>
-          <Text style={styles.listTitle} numberOfLines={1}>
+          <Text style={styles.listTitle} numberOfLines={2} ellipsizeMode="tail">
             {title}
           </Text>
 
           {listing.price > 0 ? (
-            <Text style={styles.listPrice}>
-              {listing.price.toLocaleString('ar-SA')} {listing.currency}
-            </Text>
+            <View style={[styles.listPriceRow, rtlRow]}>
+              <Text style={styles.listPriceAmount}>
+                {listing.price.toLocaleString('ar-SA')}
+              </Text>
+              <Text style={styles.listPriceCurrency}>{listing.currency}</Text>
+            </View>
           ) : null}
 
           <View style={[styles.listMetaRow, rtlRow]}>
@@ -322,22 +325,35 @@ function createStyles(colors: ThemeColors) {
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
-    gap: 5,
+    gap: 6,
   },
   listTitle: {
     ...typography.bodyStrong,
     fontSize: 15,
-    lineHeight: 22,
-    color: colors.textBrandStrong,
+    lineHeight: 21,
+    color: colors.textPrimary,
     fontWeight: '700',
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  listPrice: {
-    ...typography.bodyStrong,
-    fontSize: 16,
-    color: colors.textPrimary,
+  listPriceRow: {
+    alignItems: 'baseline',
+    gap: 5,
+    marginTop: 1,
+  },
+  listPriceAmount: {
+    fontSize: 17,
+    lineHeight: 22,
+    color: colors.textBrandStrong,
     fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  listPriceCurrency: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.textMuted,
+    fontWeight: '600',
     textAlign: 'right',
     writingDirection: 'rtl',
   },

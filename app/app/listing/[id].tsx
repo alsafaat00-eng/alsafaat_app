@@ -505,30 +505,45 @@ export default function ListingDetailScreen() {
 
         {/* ─── Content sheet ─── */}
         <View style={styles.sheet}>
-          {/* Title + seller + follow */}
-          <View style={[styles.titleRow, rtlRow]}>
-            <View style={styles.titleCol}>
-              <Text style={styles.title}>{listing.arabicTitle || listing.title}</Text>
-              {!isOwner ? (
-                <Pressable
-                  onPress={() => openUserProfile(router, listing.seller.id)}
-                  style={[styles.sellerInline, rtlRow]}
-                >
-                  <Image
-                    source={uriSource(listing.seller.avatar)}
-                    style={styles.sellerInlineAvatar}
-                    contentFit="cover"
-                  />
-                  <Text style={styles.sellerInlineName} numberOfLines={1}>
-                    {listing.seller.arabicName || listing.seller.displayName || listing.seller.username}
-                  </Text>
-                  {listing.seller.verified ? (
-                    <AppIcon name="checkmark-circle" size={14} color={colors.electricBright} />
-                  ) : null}
-                </Pressable>
-              ) : null}
-            </View>
-            {!isOwner ? (
+          <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+            {listing.arabicTitle || listing.title}
+          </Text>
+
+          <View style={styles.priceBlock}>
+            {listing.price > 0 ? (
+              <View style={[styles.priceRow, rtlRow]}>
+                <Text style={styles.price}>{listing.price.toLocaleString('ar-SA')}</Text>
+                <Text style={styles.currency}>{listing.currency}</Text>
+                {listing.featured ? (
+                  <View style={[styles.featured, rtlRow]}>
+                    <AppIcon name="star" size={11} color="#1A1300" />
+                    <Text style={styles.featuredText}>مميز</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <Text style={styles.priceOnRequest}>السعر عند الطلب</Text>
+            )}
+          </View>
+
+          {!isOwner ? (
+            <View style={[styles.sellerRow, rtlRow]}>
+              <Pressable
+                onPress={() => openUserProfile(router, listing.seller.id)}
+                style={[styles.sellerInline, rtlRow]}
+              >
+                <Image
+                  source={uriSource(listing.seller.avatar)}
+                  style={styles.sellerInlineAvatar}
+                  contentFit="cover"
+                />
+                <Text style={styles.sellerInlineName} numberOfLines={1}>
+                  {listing.seller.arabicName || listing.seller.displayName || listing.seller.username}
+                </Text>
+                {listing.seller.verified ? (
+                  <AppIcon name="checkmark-circle" size={14} color={colors.electricBright} />
+                ) : null}
+              </Pressable>
               <Pressable
                 onPress={handleFollowSeller}
                 disabled={followLoading || isFollowing === null}
@@ -547,28 +562,9 @@ export default function ListingDetailScreen() {
                   </Text>
                 )}
               </Pressable>
-            ) : null}
-          </View>
+            </View>
+          ) : null}
 
-          {/* Price + featured */}
-          <View style={[styles.priceHeader, rtlRow]}>
-            {listing.price > 0 ? (
-              <View style={[styles.priceRow, rtlRow]}>
-                <Text style={styles.price}>{listing.price.toLocaleString('ar-SA')}</Text>
-                <Text style={styles.currency}>{listing.currency}</Text>
-              </View>
-            ) : (
-              <Text style={styles.priceOnRequest}>السعر عند الطلب</Text>
-            )}
-            {listing.featured ? (
-              <View style={[styles.featured, rtlRow]}>
-                <AppIcon name="star" size={11} color="#1A1300" />
-                <Text style={styles.featuredText}>مميز</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Listing details */}
           <View style={styles.detailsCard}>
             <View style={[styles.sectionHeader, rtlRow]}>
               <View style={styles.sectionBar} />
@@ -607,7 +603,21 @@ export default function ListingDetailScreen() {
             </View>
           </View>
 
-          {/* Owner management */}
+          {(listing.arabicDescription || listing.description) ? (
+            <View style={styles.descBlock}>
+              <View style={[styles.sectionHeader, rtlRow]}>
+                <View style={styles.sectionBar} />
+                <Text style={styles.sectionTitle}>الوصف</Text>
+              </View>
+              {listing.arabicDescription ? (
+                <Text style={styles.descArabic}>{listing.arabicDescription}</Text>
+              ) : null}
+              {listing.description && listing.description !== listing.arabicDescription ? (
+                <Text style={styles.desc}>{listing.description}</Text>
+              ) : null}
+            </View>
+          ) : null}
+
           {isOwner ? (
             <View style={styles.ownerCard}>
               <View style={[styles.ownerHeader, rtlRow]}>
@@ -655,23 +665,6 @@ export default function ListingDetailScreen() {
             </View>
           ) : null}
 
-          {/* Description */}
-          {(listing.arabicDescription || listing.description) ? (
-            <View style={styles.descBlock}>
-              <View style={[styles.sectionHeader, rtlRow]}>
-                <View style={styles.sectionBar} />
-                <Text style={styles.sectionTitle}>الوصف</Text>
-              </View>
-              {listing.arabicDescription ? (
-                <Text style={styles.descArabic}>{listing.arabicDescription}</Text>
-              ) : null}
-              {listing.description && listing.description !== listing.arabicDescription ? (
-                <Text style={styles.desc}>{listing.description}</Text>
-              ) : null}
-            </View>
-          ) : null}
-
-          {/* Public listing replies */}
           <ListingCommentsSection listingId={listing.id} />
         </View>
       </ScrollView>
@@ -915,55 +908,66 @@ function createStyles(colors: ThemeColors) {
 
     // ─── Content sheet ────────────────────────────────────────────────────
     sheet: {
-      marginTop: -18,
+      marginTop: -14,
       borderTopLeftRadius: radius.xxl,
       borderTopRightRadius: radius.xxl,
       backgroundColor: colors.bgDeep,
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.xl,
-      gap: spacing.lg,
+      paddingTop: spacing.lg,
+      gap: spacing.md,
     },
-    priceHeader: {
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    priceBlock: {
+      marginTop: -2,
     },
     priceRow: {
       alignItems: 'baseline',
       gap: 6,
+      flexWrap: 'wrap',
     },
     price: {
-      ...typography.h1,
+      fontSize: 28,
+      lineHeight: 34,
       color: colors.textBrandStrong,
       fontWeight: '800',
+      textAlign: 'right',
+      writingDirection: 'rtl',
     },
-    currency: { ...typography.bodyStrong, color: colors.textBrandSoft },
-    priceOnRequest: { ...typography.h3, color: colors.textBrandStrong },
+    currency: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textMuted,
+      fontWeight: '600',
+      marginBottom: 2,
+    },
+    priceOnRequest: {
+      ...typography.h3,
+      fontSize: 18,
+      color: colors.textBrandStrong,
+      fontWeight: '700',
+    },
     featured: {
       alignItems: 'center',
       gap: 4,
       backgroundColor: colors.gold,
       paddingHorizontal: 10,
-      paddingVertical: 5,
+      paddingVertical: 4,
       borderRadius: radius.pill,
+      marginBottom: 4,
     },
     featuredText: { ...typography.micro, color: '#1A1300', fontWeight: '800' },
-    titleRow: {
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: spacing.md,
-    },
-    titleCol: {
-      flex: 1,
-      minWidth: 0,
-      gap: spacing.sm,
-    },
     title: {
-      ...typography.h2,
+      fontSize: 20,
+      lineHeight: 28,
       color: colors.textPrimary,
       fontWeight: '800',
       textAlign: 'right',
       writingDirection: 'rtl',
-      lineHeight: 32,
+    },
+    sellerRow: {
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+      paddingVertical: 2,
     },
     sellerInline: {
       alignItems: 'center',
@@ -989,9 +993,9 @@ function createStyles(colors: ThemeColors) {
     detailsCard: {
       gap: spacing.sm,
       padding: spacing.md,
-      borderRadius: radius.xl,
+      borderRadius: radius.lg,
       backgroundColor: colors.bgSurface,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.borderSoft,
     },
 
@@ -1090,12 +1094,11 @@ function createStyles(colors: ThemeColors) {
     soonBadgeText: { fontSize: 8, color: '#1A1300', fontWeight: '800' },
 
     followPill: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: 9,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 8,
       borderRadius: radius.pill,
       backgroundColor: colors.electricBright,
-      alignSelf: 'flex-start',
-      marginTop: 4,
+      flexShrink: 0,
     },
     followingPill: {
       backgroundColor: 'transparent',
@@ -1106,7 +1109,10 @@ function createStyles(colors: ThemeColors) {
     followingPillText: { color: colors.textMuted },
 
     // Description
-    descBlock: { gap: spacing.sm },
+    descBlock: {
+      gap: spacing.sm,
+      paddingTop: 2,
+    },
     sectionHeader: {
       alignItems: 'center',
       gap: 8,
@@ -1122,13 +1128,21 @@ function createStyles(colors: ThemeColors) {
       color: colors.textBrandStrong,
       fontWeight: '700',
     },
-    desc: { ...typography.body, color: colors.textSecondary, lineHeight: 22 },
-    descArabic: {
+    desc: {
       ...typography.body,
+      fontSize: 15,
       color: colors.textSecondary,
+      lineHeight: 24,
       textAlign: 'right',
       writingDirection: 'rtl',
-      lineHeight: 26,
+    },
+    descArabic: {
+      ...typography.body,
+      fontSize: 16,
+      color: colors.textPrimary,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+      lineHeight: 27,
     },
 
     // Bottom CTA
