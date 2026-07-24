@@ -8,11 +8,13 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 COPY . .
 
-# Production Railway API (baked into the web bundle at build time)
-ARG EXPO_PUBLIC_API_URL=https://sarh-app.up.railway.app
+# Production web uses same-origin /api via nginx → Railway (see nginx.web.conf).
+ARG EXPO_PUBLIC_WEB_SAME_ORIGIN=true
+ARG EXPO_PUBLIC_API_URL=
 ARG EXPO_PUBLIC_SOCKET_URL=https://sarh-app.up.railway.app
 ARG EXPO_PUBLIC_AGORA_ENABLED=false
 
+ENV EXPO_PUBLIC_WEB_SAME_ORIGIN=$EXPO_PUBLIC_WEB_SAME_ORIGIN
 ENV EXPO_PUBLIC_API_URL=$EXPO_PUBLIC_API_URL
 ENV EXPO_PUBLIC_SOCKET_URL=$EXPO_PUBLIC_SOCKET_URL
 ENV EXPO_PUBLIC_AGORA_ENABLED=$EXPO_PUBLIC_AGORA_ENABLED

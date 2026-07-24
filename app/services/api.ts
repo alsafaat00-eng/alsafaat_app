@@ -1,7 +1,17 @@
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { resolveDevServiceUrl } from './devHost';
 
+function usesSameOriginWebApi(): boolean {
+  if (process.env.EXPO_PUBLIC_WEB_SAME_ORIGIN === 'true') return true;
+  return Platform.OS === 'web' && !__DEV__;
+}
+
 function resolveApiBase(): string {
+  // Production web: same-origin /api (nginx → Railway backend).
+  if (usesSameOriginWebApi()) {
+    return '';
+  }
   return resolveDevServiceUrl(process.env.EXPO_PUBLIC_API_URL, 3001);
 }
 
